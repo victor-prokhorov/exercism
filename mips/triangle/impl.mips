@@ -1,0 +1,66 @@
+# | Register | Usage     | Type    | Description                                                                        |
+# | -------- | --------- | ------- | ---------------------------------------------------------------------------------- |
+# | `$a0`    | input     | integer | side a                                                                             |
+# | `$a1`    | input     | integer | side b                                                                             |
+# | `$a2`    | input     | integer | side c                                                                             |
+# | `$v0`    | output    | integer | type of triangle (`0` = scalene, `1` = isoceles, `2` = equilateral, `3` = invalid) |
+# | `$t0-9`  | temporary | any     | used for temporary storage                                                         |
+
+.globl triangle
+
+triangle:
+        li      $t0,0
+        li      $t1,0
+        li      $t2,0
+validate:
+        li      $t3,0 # a+b vs c
+        li      $t4,0 # b+c vs a
+        li      $t5,0 # a+c vs b
+        add     $t3,$a0,$a1
+        bge     $a2,$t3,invalid
+        add     $t4,$a1,$a2
+        bge     $a0,$t4,invalid
+        add     $t5,$a0,$a2
+        bge     $a1,$t5,invalid
+        # add     $t5,$t5,$a0
+        # add     $t5,$t5,$a2
+        # bge     $a2,$t5,invalid
+        j       check_ab
+invalid:
+        li      $v0,3
+        j       exit
+check_ab:
+        beq     $a0,$a1,set_ab
+        j       check_bc
+set_ab:
+        li      $t0,1
+check_bc:
+        beq     $a1,$a2,set_bc
+        j       check_ac
+set_bc:
+        li      $t1,1
+check_ac:
+        beq     $a0,$a2,set_ac
+        j       agregate
+set_ac:
+        li      $t2,1
+
+agregate:
+        add     $t0,$t0,$t1
+        add     $t0,$t0,$t2
+        beq     $t0,3,two
+        # beq     $t0,2,zero # is the same as 3 since their include at least 1 same side
+        beq     $t0,1,one
+        beq     $t0,0,zero
+two:
+        li      $v0,2
+        j       exit
+one:
+        li      $v0,1
+        j       exit
+zero:
+        li      $v0,0
+        j       exit
+
+exit:
+        jr $ra

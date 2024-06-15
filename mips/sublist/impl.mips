@@ -1,0 +1,84 @@
+.eqv UNEQUAL   0
+.eqv EQUAL     1
+.eqv SUBLIST   2
+.eqv SUPERLIST 3
+
+.globl sublist
+
+sublist:
+        bne     $a1, $0, $b2
+        bne     $a3, $0, $b2
+        li      $v0, 1
+        jr      $ra
+$b2:
+        bne     $a1, $0, $b3
+        li      $v0, 2
+        jr      $ra
+$b3:
+        bne     $a3, $0, $b4
+        li      $v0, 3
+        jr      $ra
+$b4:
+        bne     $a1, $a3, $b5
+        move    $t0, $a0
+        move    $t1, $a1
+        move    $t2, $a2
+$loop_b4:
+        lw      $t4, ($t0)
+        lw      $t5, ($t2)
+        bne     $t4, $t5, $b7
+        addiu   $t0, $t0, 4
+        addiu   $t2, $t2, 4
+        subiu   $t1, $t1, 1
+        bne     $t1, $0, $loop_b4
+        li      $v0, 1
+        jr      $ra
+$b5:
+        blt     $a1, $a3, $b6
+        li      $v0, 3
+        move    $t0, $a0
+        move    $t1, $a1
+        move    $t2, $a2
+        move    $t3, $a3
+        li      $t6, 0
+        li      $t7, 0
+        subu    $t8, $t1, $t3
+$inner_loop:
+        lw      $t4, ($t0)
+        lw      $t5, ($t2)
+        addiu   $t0, $t0, 4
+        addiu   $t2, $t2, 4
+        addiu   $t7, $t7, 1
+        bne     $t4, $t5, $outer_loop
+        bne     $t7, $t3, $inner_loop
+        jr      $ra
+$outer_loop:
+        addiu   $t6, $t6, 1
+        bgt     $t6, $t8, $b7
+        move    $t2, $a2
+        li      $t7, 0
+        move    $t0, $a0
+        move    $t9, $t6
+        sll     $t9, $t9, 2
+        addu    $t0, $t0, $t9
+        j       $inner_loop
+$b6:
+        li      $v0, 2
+        move    $t0, $a0
+        move    $a0, $a2
+        move    $a2, $t0
+        move    $t0, $a1
+        move    $a1, $a3
+        move    $a3, $t0
+        move    $t0, $a0
+        move    $t1, $a1
+        move    $t2, $a2
+        move    $t3, $a3
+        li      $t6, 0
+        li      $t7, 0
+        subu    $t8, $t1, $t3
+        j       $inner_loop
+$b7:
+        li      $v0, 0
+        jr      $ra
+

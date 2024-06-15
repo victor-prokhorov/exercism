@@ -1,0 +1,11 @@
+[package]
+edition = "2021"
+name = "matrix"
+version = "1.0.0"
+
+[features]
+approach1 = []
+approach2 = []
+default = ["approach1"]
+
+[dependencies]

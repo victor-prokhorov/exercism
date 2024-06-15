@@ -1,0 +1,18 @@
+.globl square
+
+square:
+    li      $v0, 0
+    li      $v1, 0
+    blt     $a0, 1, exit
+    bgt     $a0, 64, exit
+    bgt     $a0, 32, high
+    subi    $a0, $a0, 1
+    li      $v0, 1
+    sllv    $v0, $v0, $a0
+    jr      $ra
+high:
+    subi    $a0, $a0, 33
+    li      $v1, 1
+    sllv    $v1, $v1, $a0
+exit:
+    jr $ra

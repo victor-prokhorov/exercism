@@ -1,0 +1,54 @@
+# | Register | Usage        | Type    | Description                                  |
+# | -------- | ------------ | ------- | -------------------------------------------- |
+# | `$a0`    | input        | address | null-terminated name string, or null pointer |
+# | `$a1`    | input/output | address | null-terminated result string                |
+# | `$t0-9`  | temporary    | any     | for temporary storage                        |
+
+.globl two_fer
+.data 
+one_for:	.asciiz "One for "
+you:		.asciiz "you"
+one_for_me:	.asciiz ", one for me."
+str_buf:	.space 250	# we assume that the names will not be longer that this
+.text
+
+two_fer:
+	li	$t0, 0		# offset counter
+	move	$t9, $a1	# we will operate on $t9 when writing and offseting position
+loop_1:
+	lb	$t1, one_for($t0)
+	beqz	$t1, after_1
+	addi	$t0, $t0, 1
+	sb	$t1, ($t9)
+	addi	$t9, $t9, 1
+	j	loop_1
+after_1:
+	li	$t0, 0 		# reset offset
+	# now we check if the name is empty or not, if so we write "you"
+	# lb	$t1, ($a0)  	non non!
+	beqz	$a0, write_you_loop	
+write_name_loop:
+	lb	$t1, ($a0)
+	beqz	$t1, after_2
+	addi	$a0, $a0, 1
+	sb	$t1, ($t9) # error here somehow
+	addi	$t9, $t9, 1
+	j	write_name_loop
+write_you_loop:
+	lb	$t1, you($t0)
+	beqz	$t1, after_2
+	addi	$t0, $t0, 1
+	sb	$t1, ($t9)
+	addi	$t9, $t9, 1
+	j	write_you_loop
+after_2:
+	li	$t0, 0 		# reset offset
+last_loop:
+	lb	$t1, one_for_me($t0)
+	beqz	$t1, exit
+	addi	$t0, $t0, 1
+	sb	$t1, ($t9)
+	addi	$t9, $t9, 1
+	j	last_loop
+exit:	
+        jr      $ra

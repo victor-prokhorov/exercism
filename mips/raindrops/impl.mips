@@ -1,0 +1,94 @@
+# | Register | Usage        | Type    | Description                   |
+# | -------- | ------------ | ------- | ----------------------------- |
+# | `$a0`    | input        | integer | given number                  |
+# | `$a1`    | input/output | address | null-terminated result string |
+# | `$t0-9`  | temporary    | any     | for temporary storage         |
+
+#    is divisible by 3, add "Pling" to the result.
+#    is divisible by 5, add "Plang" to the result.
+#    is divisible by 7, add "Plong" to the result.
+#    is not divisible by 3, 5, or 7, the result should be the number as a string.
+
+.data
+pling_string: .asciiz "Pling"
+plang_string: .asciiz "Plang"
+plong_string: .asciiz "Plong"
+rev_str: .asciiz ""
+
+.text
+.globl raindrops
+
+raindrops:
+        la      $t7, rev_str            # const base
+        la      $t8, rev_str            # mut
+        li      $t9, 0                  # counter, add 1 for each branch we went in
+        # pling
+        li      $t0, 3
+        div     $a0, $t0
+        mfhi    $t1
+        bne     $t1, $zero, plang_branch
+        blt     $a0, $t0, plang_branch
+        addi    $t9, $t9, 1
+        li      $t0, 0
+# todo: write should be a separate function it's almost the same function 3 times
+write_pling:
+        lb      $t1, pling_string($t0)
+        addi    $t0, $t0, 1
+        beq     $t1, '\0', plang_branch
+        sb      $t1, ($a1)
+        addi    $a1, $a1, 1
+        b       write_pling
+plang_branch:
+        li      $t0, 5
+        div     $a0, $t0
+        mfhi    $t1
+        bne     $t1, $zero, plong_branch
+        blt     $a0, $t0, plong_branch
+        addi    $t9, $t9, 1
+        li      $t0, 0
+write_plang:
+        lb      $t1, plang_string($t0)
+        addi    $t0, $t0, 1
+        beq     $t1, '\0', plong_branch
+        sb      $t1, ($a1)
+        addi    $a1, $a1, 1
+        b       write_plang
+plong_branch:
+        li      $t0, 7
+        div     $a0, $t0
+        mfhi    $t1
+        bne     $t1, $zero, pre_exit
+        blt     $a0, $t0, pre_exit
+        addi    $t9, $t9, 1
+        li      $t0, 0
+write_plong:
+        lb      $t1, plong_string($t0)
+        addi    $t0, $t0, 1
+        beq     $t1, '\0', exit
+        sb      $t1, ($a1)
+        addi    $a1, $a1, 1
+        b       write_plong
+to_string:
+        beq     $a0, $zero, reverse
+        li      $t0, 10
+        div     $a0, $t0          
+        mfhi    $t1
+        # we are about to exit we can trash the input i guess
+        mflo    $a0
+        addi    $t2, $t1, '0'
+        sb      $t2, ($t8)
+        addi    $t8, $t8, 1
+        b       to_string
+reverse:
+        beq     $t7, $t8, exit
+        lb      $t0, -1($t8)
+        subi    $t8, $t8, 1
+        sb      $t0, ($a1)
+        addi    $a1, $a1, 1
+        b       reverse
+pre_exit:
+        beq     $t9, $zero, to_string        # if not divisible by 3, 5 or 7, convert integer to string
+exit:
+        jr      $ra
+
+        

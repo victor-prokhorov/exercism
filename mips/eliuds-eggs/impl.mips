@@ -1,0 +1,23 @@
+# | Register | Usage     | Type    | Description                |
+# | -------- | --------- | ------- | -------------------------- |
+# | `$a0`    | input     | integer | input number               |
+# | `$v0`    | output    | integer | number of eggs             |
+# | `$t0-9`  | temporary | any     | used for temporary storage |
+
+.globl egg_count
+
+egg_count:
+        li      $v0,0
+        li      $t0,1
+look_for_eggs:
+        beq     $t0,$zero,exit
+        and     $t1,$a0,$t0
+        beq     $t0,$t1,found_egg
+        sll     $t0,$t0,1
+        j       look_for_eggs
+found_egg:
+        addi    $v0,$v0,1
+        sll     $t0,$t0,1
+        j       look_for_eggs
+exit:
+        jr      $ra

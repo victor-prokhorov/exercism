@@ -1,0 +1,27 @@
+.data
+values: .byte 1, 3, 3, 2, 1, 4, 2, 4, 1, 8, 5, 1, 3, 1, 1, 3, 10, 1, 1, 1, 1, 4, 4, 8, 4, 10
+
+.text
+
+.globl scrabble_score
+
+scrabble_score:
+        move    $v0, $zero
+        li      $t1, 0x20               # bitmask with 6th bit set, the one that we do care to determine if ascii character is lower or uppercase
+        # la      $t3, values             # address of first byte
+loop:
+        lb      $t0, ($a0)              # character
+        beq     $t0, '\0', exit         # did we arrived at the string null termination?
+        addi    $a0, $a0, 1
+        or      $t0, $t0, $t1           # assuming we do receive only valid ascii characters, we make sure the 6th bit is set effectively converting upper to lowercase
+        sub     $t2, $t0, 'a'           # offset of the letter from 'a', index in other words
+        # lb      $t5, $t3($t2)         # illegal
+        lb      $t5, values($t2)        # legal
+        # move    $t0, $zero
+        # add     $t4, $t3, $t2
+        # lb      $t5, ($t4)
+        add     $v0, $v0, $t5
+        # https://stackoverflow.com/questions/10981593/what-is-the-difference-between-unconditional-branch-and-unconditional-jump-inst
+        b       loop
+exit:
+        jr $ra

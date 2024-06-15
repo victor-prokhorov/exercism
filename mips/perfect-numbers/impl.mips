@@ -1,0 +1,40 @@
+.eqv PERFECT    1
+.eqv ABUNDANT   2
+.eqv DEFICIENT  3
+.eqv ERROR     -1
+
+.globl classify
+
+classify:
+        li      $t0,1                       # divisor
+        blt     $a0,$t0,error
+        li      $t1,0                       # sum
+loop:
+        # beq     $t0,$a0,classify_result  # naive version, now we will check up until sqaured, and add from `lo`
+        mul     $t3,$t0,$t0
+        beq     $t3,$a0,classify_result
+        bgt     $t3,$a0,classify_result
+        div     $a0,$t0
+        mfhi    $t2
+        bnez    $t2,next_divisor
+        add     $t1,$t1,$t0
+        mflo    $t4
+        beq     $a0,$t4,next_divisor
+        add     $t1,$t1,$t4
+next_divisor:
+        addi    $t0,$t0,1
+        j       loop
+classify_result:
+        beq     $t1,$a0,perfect
+        bgt     $t1,$a0,abundant
+        li      $v0,DEFICIENT
+        jr      $ra
+abundant:
+        li      $v0,ABUNDANT
+        jr      $ra
+perfect:
+        li      $v0,PERFECT
+        jr      $ra
+error:
+        li      $v0,ERROR
+        jr      $ra

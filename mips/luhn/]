@@ -1,0 +1,61 @@
+# | Register | Usage     | Type    | Description                                            |
+# | -------- | --------- | ------- | ------------------------------------------------------ |
+# | `$a0`    | input     | address | null-terminated input string                           |
+# | `$v0`    | output    | boolean | validity of input string (`0` = `false`, `1` = `true`) |
+# | `$t1-9`  | temporary | any     | used for temporary storage                             |
+
+.globl valid
+
+valid:
+        li      $t0,0
+        li      $t3,0
+        li      $v0,0
+traverse_ltr:
+        lb      $t1,($a0)
+        addi    $a0,$a0,1
+        addi    $t3,$t3,1
+        bne     $t3,$zero,traverse_ltr
+        subi    $t3,$t3,1
+        subi    $a0,$a0,1
+eval_rtl:
+        j       dbg
+        # handles first digit, multiplier of 1
+        lb      $t1,($a0)
+        subi    $a0,$a0,1
+        subi    $t3,$t3,1
+        beq     $t3,$zero,verdict
+        blt     $t1,'0',exit
+        bgt     $t1,'9',exit
+        subi    $t1,$t1,'0'
+        add     $t0,$t0,$t1
+        # handles second digit, hmmmmm... some duplication is going on here, multiplier of 2
+        # i guess the solution would just have similar routine with multiplier saved and subroutine for 9 sub
+        lb      $t1,($a0)
+        subi    $a0,$a0,1
+        subi    $t3,$t3,1
+        beq     $t3,$zero,verdict
+        blt     $t1,'0',exit
+        bgt     $t1,'9',exit
+        subi    $t1,$t1,'0'
+        add     $t1,$t1,$t1
+        bgt     $t1,9,sub
+        j       sum
+sub:
+        subi    $t1,$t1,9
+sum:
+        add     $t0,$t0,$t1
+        j       eval_rtl
+        # and the verdict is... actually need label 3 numbers expected to be fine
+verdict:
+        li      $t1,10
+        blt     $t0,$t1,exit
+        div     $t0,$t1
+        mfhi    $t0
+        bne     $t0,$zero,exit
+        li      $v0,1
+exit:
+        jr      $ra
+
+dbg:
+        move    $v0,$t0
+        jr      $ra

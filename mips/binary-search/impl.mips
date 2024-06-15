@@ -1,0 +1,71 @@
+# | Register | Usage        | Type    | Description                    |
+# | -------- | ------------ | ------- | ------------------------------ |
+# | `$a0`    | input        | address | array elements                 |
+# | `$a1`    | input        | integer | size of array, in words        |
+# | `$a2`    | input        | integer | value being searched for       |
+# | `$v0`    | output       | integer | index of value in array, or -1 |
+# | `$t0-9`  | temporary    | any     | for temporary storage          |
+
+.globl find
+
+find:
+        li      $t0,0           # lo, index inclusize
+        move    $t2,$a1         # hi, size
+        move    $t1,$t2         # mi, index
+        div     $t1,$t1,2
+        move    $v0,$t1
+loop:
+        blt     $t1,$t0,nf      # mi less than lo, not found
+        bge     $t1,$t2,nf      # mi greater than or equal hi, not found
+        move    $t3,$a0         # copy array address
+        mul     $t4,$t1,4       # mi index in bytes
+        add     $t3,$t3,$t4     # `a[mi]`
+        lw      $t5,($t3)       # `let x = a[mi]`
+        beq     $t5,$a2,f       # `if x == target`, found
+        bgt     $t5,$a2,mhi     # `x > target` move hi left, shrink right boundary
+        move    $t0,$t1         # implicitely `x < target` branch, shrink left boundary, lo takes previous mi position
+        addi    $t0,$t0,1       # offset by 1, lo is inclusive 
+        j       cmi             # calculate mi
+mhi:
+        move    $t2,$t1         # hi takes mi position, then we fall trough into mi calculation
+cmi:
+        sub     $t1,$t2,$t0     # `let mi = hi - lo`
+        div     $t1,$t1,2       # `let mi = (hi - lo) / 2`
+        add     $t1,$t1,$t0     # `let mi = (hi - lo) / 2 + lo`
+        j       loop
+nf:
+        li      $v0,-1
+        j       exit
+f:
+        move    $v0,$t1
+        j       exit
+result:
+        j       exit
+
+
+
+
+
+
+############################# helpers and quick tests
+fetch_last_in_words:
+        subi    $a1,$a1,1   # last index in words
+        mul     $t2,$a1,4   # last index in bytes, representing offset
+        add     $a0,$a0,$t2 # set pointer to the last index, address type
+        lw      $v0,($a0)
+        jr      $ra
+fetch_last_in_bytes:
+        mul     $t2,$a1,4   # hi, size of array, in bytes
+        add     $a0,$a0,$t2 # offset by the size
+        subi    $a0,$a0,4   # rewind to the last
+        lw      $v0,($a0)
+        jr      $ra
+fetch_next:
+        addi    $a0,$a0,4   # offset by 4 bytes, or by 1 word, or by 1 integer size
+        lw      $v0,($a0)
+        jr      $ra
+fetch_at_index:
+        lw      $v0,($a0)
+        jr      $ra
+exit:
+        jr      $ra

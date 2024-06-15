@@ -1,0 +1,83 @@
+# | Register | Usage     | Type    | Description                                |
+# | -------- | --------- | ------- | ------------------------------------------ |
+# | `$a0`    | input     | integer | planet (`0` = Mercury, `1` = Venus,        |
+# |          |           |         | `2` = Earth, `3` = Mars, `4` = Jupiter,    |
+# |          |           |         | `5` = Saturn, `6` = Uranus, `7` = Neptune) |
+# | `$a1`    | input     | integer | seconds                                    |
+# | `$v0`    | output    | integer | age in hundredths of a year                |
+# | `$t0-9`  | temporary | any     | used for temporary storage                 |
+
+.eqv MERCURY 0
+.eqv VENUS   1
+.eqv EARTH   2
+.eqv MARS    3
+.eqv JUPITER 4
+.eqv SATURN  5
+.eqv URANUS  6
+.eqv NEPTUNE 7
+
+.globl age
+
+.data
+
+# original solution from here
+# https://exercism.org/tracks/mips/exercises/space-age/solutions/keiraville
+
+# .globl age
+# 3169 is the expected output integer for earth representing 31.69
+# 1000000000 / 31557600 = 31 because it's not double precision
+# reciprocal of t is 1/t
+# (1 / 31557600) * (Math.pow(2, 48))
+# 8919403.77945902 
+# 891940378 what we want as reciprocal for earth
+# i guess since we also want 3169 instead of 31.69 we should mult by 100
+# reciprocal of the number of seconds in a year, scaled up by 100 * 2**48
+# 32 + 16, 1.5 integer
+reciprocals:  .word
+        3703353120, # Mercury,
+        1449844523, # Venus,
+        891940378,  # Earth,
+        474230585,  # Mars,
+        75189187,   # Jupiter,
+        30289174,   # Saturn,
+        10616209,   # Uranus,
+        5412545     # Neptune
+
+.text
+
+age:
+        la      $t0, reciprocals
+        sll     $a0, $a0, 2     # will be used to offset addr, convert index into offset in words by *4
+        add     $t0, $t0, $a0   # now $t0 is not index but offset
+        lw      $t1, 0($t0)             # load reciprocal of the number of seconds in a year
+        multu   $t1, $a1
+        #  32 hi 32 lo, keep most significat, we "loose precision" if we think flaoting i guess
+        #  it's effective to `x>>32`, so from starting 48 part of the scale
+        #  we left only with 16 to clean up
+        mfhi    $v0                     # scale down by 2**32 by discarding low bits
+        # 0x8000 = 1000000000000000
+        # ori     $t2, $zero, 0x8000 # original
+        # li      $t2, 0x8000
+        li      $t2, 0x00008000
+        #              ^^^^
+        #              this part (this half) is what we will keep at the end from $v0
+        # i guess it's equivalent of 0.5 rounding trick
+        # https://stackoverflow.com/questions/47302544/why-do-lots-of-old-programs-use-floor0-5-input-instead-of-roundinput
+        # - 2.4 + 0.5 = 2.9, which rounds to 3.
+        # - 2.6 + 0.5 = 3.1, which also rounds to 3.
+        # so if i'm not mistaken with this assumption, then:
+        # when round to 1 as precision, we add a half (0.5)
+        # but in binary since we will keep 2^16, we add 2^15
+        # addu    $v0, $v0, $t2
+        # and     $t4, $v0, $t2
+        # srl     $t4, $t4, 15
+        # move    $v0, $t4
+        # jr $ra
+        # sgt    $t5, $t4, 5
+        addu    $v0, $v0, $t2           # round           
+        srl     $v0, $v0, 16           # scale down by 2**16
+        # beq     $t5, 1, round
+        # jr      $ra
+# round:
+#         addu    $v0, $v0, 1
+        jr      $ra

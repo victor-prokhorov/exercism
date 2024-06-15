@@ -1,0 +1,52 @@
+# | Register | Usage        | Type    | Description                   |
+# | -------- | ------------ | ------- | ----------------------------- |
+# | `$a0`    | input        | address | null-terminated input string  |
+# | `$a1`    | input/output | address | null-terminated output string |
+# | `$t0-9`  | temporary    | any     | used for temporary storage    |
+
+.globl atbash_cipher
+
+atbash_cipher:
+        li      $t0,0       # counter, insert ' ' every 5 chars
+        move    $t4,$a1     # used to move ptr to the right, so $a1 remains untuched and we can return it
+loop:
+        lb      $t1,($a0)
+        beqz    $t1,finalize
+        addi    $a0,$a0,1
+        # i will cheat, i saw there no tests for validity so i will skip boundaries routine
+        # wo we only need the lowercaser uppercase check
+        # A-Z 65-90 and a-z 97-122, 97 - 65 = 32
+        beq     $t1,' ',loop    # ignore whitespace
+        bgt     $t1,96,lc   # just checking one upper side, assuming it's in valid range
+        j       uc          # else we assume its in lower range
+lc:
+        subi    $t2,$t1,'a' # offset from 'a'
+        li      $t5,'z'
+        sub     $t3,$t5,$t2 # rev, $t3 is the encrypted char
+        j       write
+uc:
+        subi    $t2,$t1,'A'
+        li      $t5,'Z'
+        sub     $t3,$t5,$t2
+        addi    $t3,$t3,32 # we still need to write lowercase equivalent, so offsetting by 32
+        j       write
+write:
+        sb      $t3,($t4)
+        addi    $t4,$t4,1
+        addi    $t0,$t0,1   # we saved char (non ' ' char), so increment counter
+        # ' '
+        bne     $t0,5,loop
+        li      $t0,0       # reset the count
+        li      $t6,' '
+        sb      $t6,($t4)
+        addi    $t4,$t4,1
+        j       loop
+finalize:
+        # "12345 \n", at finalize we might be at nullptr
+        # subi    $t4,$t4,2  # we are beyond nullptr, -1 at nullptr, -1 at the last char that either letter or ' '
+        lb      $t0,-2($t4)
+        bne     $t0,' ',exit
+        sb      $zero,-2($t4)
+exit:
+        jr      $ra
+

@@ -1,0 +1,24 @@
+.globl difference_of_squares
+
+# brute force approach, literally do the operations
+difference_of_squares:
+        move    $t0     $a0
+        li      $t1     0
+        move    $t2     $a0
+        li      $t3     0
+loop:
+        beq     $t0     $zero   continue
+        add     $t1     $t1     $t0
+        subi    $t0     $t0     1
+        j       loop
+continue:
+        mul     $t1     $t1     $t1
+hoho_yet_another_loop:
+        beq     $t2     $zero   end
+        mul     $t4     $t2     $t2
+        add     $t3     $t3     $t4
+        subi    $t2     $t2     1
+        j       hoho_yet_another_loop
+end:
+        sub     $v0     $t1     $t3
+        jr      $ra

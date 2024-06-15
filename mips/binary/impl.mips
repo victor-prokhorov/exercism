@@ -1,0 +1,20 @@
+.globl binary_convert
+
+binary_convert:
+        li      $v0, 0
+
+loop:
+        # lbu     $t0, ($a0) 
+        lb      $t0, 0($a0)
+        beqz    $t0, end
+        sll     $v0, $v0, 1     # multiply by 2 effectively increment exponent to let place for new value
+        # subi    $t1, $t0, '0'
+        # subi    $t1, $t0, 48
+        addi    $t1, $t0, -48
+        # add     $v0, $v0, $t1
+        or      $v0, $v0, $t1   # since we shifted, it's `0` both `add` or `or` works
+        addi    $a0, $a0, 1
+        j       loop
+
+end:
+        jr $ra

@@ -1,0 +1,53 @@
+.globl valid
+
+valid:
+    li      $v0,0           # unset result, we will use early returns
+    li      $t0,0           # sum
+    li      $t1,1           # multiplier - alternating, from right to left, between `1` and `2`
+    li      $t2,0           # valid numbers count
+    li      $t3,0           # total characters count - we will use this to iterate `rtl` and stop when reaching the first left character
+    li      $t4,9           # const
+    li      $t5,10          # const
+    li      $t7,1           # const
+    li      $t8,2           # const
+ltr:
+    lb      $t6,($a0)       # `$t6` holds loaded byte representing character
+    beqz    $t6,setup_rtl   # if null terminator, go to setup rtl
+    addi    $a0,$a0,1       # offset `$a0` pointer by 1 byte to the right
+    addi    $t3,$t3,1       # increment total counter
+    j       ltr             # keep iterating
+setup_rtl:
+    subi    $a0,$a0,1       # rewind to get the last character and not the null termination
+rtl:
+    lb      $t6,($a0)
+    subi    $a0,$a0,1       # we now decrement because we go `rtl`
+    subi    $t3,$t3,1       # same goes for total count
+    beq     $t6,' ',rtl     # after we prepared the next iteration of `rtl`, skip whitespace
+    blt     $t6,'0',exit    # only ascii encoded numbers are legal characters at this point
+    bgt     $t6,'9',exit
+    subi    $t6,$t6,'0'     # convert `$t6` to number
+    addi    $t2,$t2,1       # increment valid numbers count
+    mul     $t6,$t6,$t1     # `$t6` is now multiplied number
+    bgt     $t6,$t4,sub     # subtract `9` when number is bigger than `9`
+    j       sum
+sub:
+    subi    $t6,$t6,9
+sum:
+    add     $t0,$t0,$t6     # add number we just ended processing to the running sum
+    beqz    $t3,result      # when we arrive again back to zero we can proceed to the `result`
+    beq     $t1,$t7,smt     # if multiplier is `1` toggle it - set multiplier to `2`
+    j       smo             # else set multiplier to `1`
+smt:
+    li      $t1,2
+    j       rtl
+smo:
+    li      $t1,1
+    j       rtl
+result:
+    blt     $t2,$t8,exit    # early return if we got less then two characters
+    div     $t0,$t5         # we are looking for remainder when dividing sum by `10`
+    mfhi    $t9
+    bnez    $t9,exit        # if remainder is not zero early return
+    li      $v0,1           # else set `$v0` before exiting
+exit:
+    jr      $ra

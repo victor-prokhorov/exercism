@@ -1,0 +1,24 @@
+.globl score
+
+score:
+        li      $t0, 1
+        li      $t1, 25
+        li      $t2, 100
+	# no need to toggle sign bit since we multiply anyway!
+        mul     $t3, $a0, $a0
+        mul     $t4, $a1, $a1
+        add     $t3, $t3, $t4
+        bgt     $t3, $t2, zero_points
+        bgt     $t3, $t1, one_point
+        bgt     $t3, $t0, five_points
+        li      $v0, 10
+	jr	$ra
+one_point:
+        li      $v0, 1
+        jr      $ra
+five_points:
+        li      $v0, 5
+        jr      $ra
+zero_points:
+	li	$v0, 0
+        jr      $ra
