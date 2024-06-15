@@ -1,4 +1,6 @@
-## download all exercies from the track
+# exercism solutions from rust and mips tracks
+
+## script to download all exercies from the track
 
 ```bash
 #!/usr/bin/env bash
