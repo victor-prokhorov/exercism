@@ -3,8 +3,152 @@
 # | `$a0`    | input        | address | null-terminated input string  |
 # | `$a1`    | input/output | address | null-terminated output string |
 # | `$t0-9`  | temporary    | any     | used for temporary storage    |
+.data
 
+# .eqv is_question	0 # that ends with question mark
+sure: .asciiz		"Sure."
+
+# .eqv is_yelling		1 # all caps
+chill: .asciiz		"Whoa, chill out!"
+
+# is_question + is_yelling 
+calm: .asciiz		"Calm down, I know what I'm doing!"
+
+# null
+fine: .asciiz		"Fine. Be that way!"
+
+# anything else
+whatever: .asciiz	"Whatever."
+
+# 65..=90 uppercase ascii, 97..=122 lowercase ascii
+# 63 question mark
+# 92 \
+# we can start with all caps then check if we change this to lowercase
 .globl response
+.text
 
 response:
-        jr      $ra
+	beqz	$a1, branch_fine # if null go directly to fine
+	# is question check: do we found `?` if we did found, we can say it is a question if everything we found after, is whitespaces
+	# li	$t3, 0		# `is_question = false`
+	li	$t4, 1		# `is_yelling = true`
+	li	$t5, 0		# question mark found, we set if found, unsert if read anything not whitespace
+	li	$t6, 0		# at least one uppercase found
+        li      $t7, 0          # chars count
+	# prepare scan loop
+	move	$t0, $a0	# copy so we don't trash the input
+scan_loop:
+	lb	$t2, ($t0)
+	beqz	$t2, take_decision
+	addi	$t0, $t0, 1
+	# now process $t2 char
+	# seq	$t5, $t2, '?'    # set question mark flag if we found question mark character
+        # seq will not work here of course! i'm resetting it back when != '?'
+        beq     $t2, '?', set_qm
+        j       dontsetqm
+set_qm:
+        li      $t5, 1
+dontsetqm:
+	# check if it is a lowercase letter aka included in 97 122
+        # todo: i forgot to use 'A' 'a' directly which is way more readable then numerical representations
+	li	$t8, 97
+	li	$t9, 122
+	blt	$t2, $t8, no_lower_found
+	bgt	$t2, $t9, no_lower_found
+	li	$t4, 0		# lowercase found `is_yelling = false`
+        addi    $t7, $t7, 1     # increment char counter for ascii lowercase
+        # looks like numbers are also fine and should be counted
+        li      $t8, '0'
+        li      $t9, ':'
+        li      $t5, 0          # since we foudn non empty char its not a question anymore
+	blt	$t2, $t8, dontinc
+	bgt	$t2, $t9, dontinc
+        addi    $t7, $t7, 1
+dontinc:
+no_lower_found:
+continue_scan:
+        # here we handle upper case
+	li	$t8, 65
+	li	$t9, 90
+	blt	$t2, $t8, continue_scan_2 # continue loop
+	bgt	$t2, $t9, continue_scan_2
+        addi    $t7, $t7, 1     # increment char counter for ascii uppercase
+	li	$t6, 1
+continue_scan_2:
+        # todo: here same duplicate code, export to a routine?
+        li      $t8, '0'
+        li      $t9, ':' # todo: super cheesy hack to solve ":) ?" input
+	blt	$t2, $t8, scan_loop
+	bgt	$t2, $t9, scan_loop
+        addi    $t7, $t7, 1
+        li      $t5, 0          # since we foudn non empty char its not a question anymore
+	j	scan_loop
+take_decision:
+        beqz    $t7, branch_fine # no chars found (only whitespace or punctuation)
+	# at this point null was already alimintated
+	beq	$t6, 1, is_upper # is upper for real not just an assumption
+	li	$t4, 0		# otherwise switch
+        beq     $t5, 1, branch_sure
+	j	branch_whatever # else branch
+is_upper:
+	beq	$t4, 1, b_chill_or_sure
+	beq	$t5, 1, branch_sure
+	j	branch_whatever # else branch
+b_chill_or_sure:
+	# chill true maybe also sure
+	beq	$t5, 1, branch_calm
+	j	branch_chill
+branch_whatever:
+	la	$t0, whatever
+	move	$t1, $a1
+	j	loop
+branch_fine:
+	la	$t0, fine
+	move	$t1, $a1
+	j	loop
+branch_calm:
+	la	$t0, calm
+	move	$t1, $a1
+	j	loop
+branch_chill:
+	la	$t0, chill
+	move	$t1, $a1
+	j	loop
+branch_sure:
+	la	$t0, sure
+	move	$t1, $a1
+	j	loop
+loop:
+	lb	$t2, ($t0)
+	beqz	$t2, exit
+	sb	$t2, ($t1)
+	addi	$t0, $t0, 1
+	addi	$t1, $t1, 1
+	j	loop
+exit:
+	jr	$ra
+
+# response:
+# 	# beqz	$a0, bfine
+# 	j	bfine
+# 	# j	exit
+# bfine:
+# 	la	$t9, fine
+# 	jal	write_t9
+# 	# j	exit
+# # exit:
+#         jr      $ra
+# 
+# write_t9:
+# 	# setup
+# 	li	$t0, 0		# offset read
+# 	move	$t1, $a1	# save addr of the output str so we can offset it and return the $a1 as is
+# loop:
+# 	lb	$t2, fine($t0)
+# 	# beqz	$t2, end
+# 	# addi	$t0, $t0, 1
+# 	# sb	$t2, ($t1)
+# 	# addi	$t1, $t1, 1
+# 	# j	loop
+# end:
+# 	jr	$ra
