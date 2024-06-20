@@ -8,79 +8,49 @@
 
 .data
 
-fine: .asciiz "Fine. Be that way!"
-calm: .asciiz "Calm down, I know what I'm doing!"
-chill: .asciiz "Whoa, chill out!"
-sure: .asciiz "Sure."
-whatever: .asciiz "Whatever."
+fine:           .asciiz "Fine. Be that way!"
+calm:           .asciiz "Calm down, I know what I'm doing!"
+chill:          .asciiz "Whoa, chill out!"
+sure:           .asciiz "Sure."
+whatever:       .asciiz "Whatever."
 
 .text
 
 response:
-	li	$t0, 0		# address of output to load
-	# li	$t1, 1		# is input containing only alphabetic uppercase characters
-	li	$t1, 1		# DID NOT FOUND ANY lowercase letter
-	li	$t3, 0		# FOUND AT LEAST ON REAL UPPERCASE
-                                # t1 & t3
-	# li	$t2, 0		# is trimed input ends with question mark
-	# do we really need the first character?
-	# li	$t3, 0		# address of first non whitespace character
-	# li	$t4, 0		# should skip $t3 address store operation
+	li	$t1, 0		# found ascii lowercase character
+	li	$t3, 0		# found ascii uppercase character
 	li	$t5, 0		# address of last non whitespace character
+        li      $t8, 0          # last non whitespace found character
 loop:
-	lb	$t6, ($a0)	# character we are about to process
-	addi	$a0, $a0, 1	
+	lb	$t6, ($a0)	# character to process
+	addi	$a0, $a0, 1
 	beqz	$t6, done
 	beq	$t6, ' ', loop
 	beq	$t6, '\n', loop
 	beq	$t6, '\r', loop
-	beq	$t6, '\t', loop # at this point we know that $t6 contains a non whitespace character
-# 	beq	$t4, 1, skip_address
-# 	move	$t3, $a0	# store first non whitespace character
-# skip_address:
-# 	ori	$t4, $t4, 1	# set if start is not set, don't change if already set, that way we will store $t3 only once
-	move	$t5, $a0	# always update last non whitespace character
-	subi	$t5, $t5, 1	# we did incremented so we go back by 1 step
-	# todo: just load directly the character we can just compare 0 or any other values to compare if it's a '?'
-
-	# subi	$t6, $t6, 'a'
-	# sltiu	$t7, $t6, 26	# is character contained in the range that represent ascii lowercase letters
-        # A -> a
-	subi	$t6, $t6, 'A'
-	sltiu	$t7, $t6, 26	# is character contained in the range that represent ascii lowercase letters
-	beqz	$t7, not_found_uppercase
-	li	$t3, 1		# we have at least one real character
-not_found_uppercase:
-	subi 	$t6, $t6, 32
-	sltiu	$t7, $t6, 26	# is character contained in the range that represent ascii lowercase letters
-
-	beqz	$t7, assume_uppercase
-	li	$t1, 0		# found lowercase ascii character, not punctuation, this means we have to unset
-assume_uppercase: # directly loop
+	beq	$t6, '\t', loop
+	lb	$t8, -1($a0)	# update with last non whitespace character
+	subi	$t6, $t6, 'A'   # offset so 'A' is at index 0
+	sltiu	$t7, $t6, 26	# is character contained in the range of ascii uppercase characters
+        or      $t3, $t3, $t7
+	subi 	$t6, $t6, 32    # change offset so 'a' is at index 0
+	sltiu	$t7, $t6, 26	# is character contained in the range of ascii lowercase letters
+        or      $t1, $t1, $t7
 	j	loop
 done:
 	la	$t0, fine
-	beqz	$t5, write	# if last non whitespace character still points to zero, this means that the input is empty
-
-	la	$t0, calm       # question mark + no lowercase + at least 1 real upppercase
-	lb	$t8, ($t5)
-	seq	$t2, $t8, '?'
-	and	$t9, $t1, $t2	# is upper + ? 
-        and     $t7, $t1, $t3   # found at at least 1 reall upperase and did not found any lowercase
-        and     $t9, $t9, $t7   # the whole condition
-        beq     $t9, 1, write
-
+	beqz	$t8, write	# if last non whitespace character still points to zero, the input is empty
+	la	$t0, calm      
+	seq	$t2, $t8, '?'   # last char was question mark
+        nor     $t1, $t1, $zero
+        and     $t7, $t1, $t3   # not found lowercase and found uppercase
+        and     $t9, $t7, $t2   # and ends with question mark
+        bnez    $t9, write
 	la	$t0, chill
-	beq	$t7, 1, write
-
+        bnez    $t7, write
 	la	$t0, sure
-	beq	$t2, 1, write
-
+        bnez    $t2, write
 	la	$t0, whatever
-	j	write
-
-	# bnez	$t1, write
-	# jr	$ra
 write:
 	lb	$t1, ($t0)
 	addi	$t0, $t0, 1
@@ -88,7 +58,3 @@ write:
 	addi	$a1, $a1, 1
 	bnez	$t1, write
 	jr	$ra
-
-
-
-	# lb	$t5, ($t5)	# now $t5 holds the character (value) it was previously pointing to (address)
