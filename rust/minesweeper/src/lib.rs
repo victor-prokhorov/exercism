@@ -1,60 +1,135 @@
-#![warn(clippy::pedantic)]
+#![feature(test)]
+extern crate test;
 
-use std::str::from_utf8;
+// kudos to the author for this offsets idea
+// https://exercism.org/tracks/rust/exercises/minesweeper/solutions/kstep
+#[rustfmt::skip]
+static OFFSETS: &[(isize, isize)] = &[
+    (-1, -1), (0, -1), (1, -1),
+    (-1,  0),          (1,  0),
+    (-1,  1), (0,  1), (1,  1),
+];
+
+fn proc(mf: &[&str], p: (usize, usize), offset: (isize, isize)) -> usize {
+    let i: usize = match (p.0 as isize + offset.0).try_into() {
+        Ok(i) => i,
+        Err(_) => return 0,
+    };
+    let r = match mf.get(i) {
+        Some(r) => r.as_bytes(),
+        None => return 0,
+    };
+    let j: usize = match (p.1 as isize + offset.1).try_into() {
+        Ok(j) => j,
+        Err(_) => return 0,
+    };
+    match r.get(j).as_ref() {
+        Some(b' ') | None => 0,
+        Some(b'*') => 1,
+        _ => panic!("{:?}", r[j]),
+    }
+}
 
 #[must_use]
-pub fn annotate(minefield: &[&str]) -> Vec<String> {
-    let mut result = vec![];
-
-    let height = minefield.len();
-
-    if !minefield.is_empty() {
-        let width = minefield[0].as_bytes().len();
-
-        let mut buffer: Vec<Vec<u8>> = vec![vec![b' '; width]; height];
-        println!("width: {width:?} height: {height:?}");
-
-        for (row_index, &str) in minefield.iter().enumerate() {
-            for (column_index, &byte) in str.as_bytes().iter().enumerate() {
-                println!("row_index: {row_index:?} column_index: {column_index:?}");
-
-                if byte == b'*' {
-                    buffer[row_index][column_index] = byte;
-
-                    let possible_row_range: Vec<usize> = (row_index.saturating_sub(1)
-                        ..=row_index.saturating_add(1))
-                        .filter(|&row_index| row_index < height)
-                        .collect();
-                    let possible_column_range: Vec<usize> = (column_index.saturating_sub(1)
-                        ..=column_index.saturating_add(1))
-                        .filter(|&column_index| column_index < width)
-                        .collect();
-                    println!("possible_row_range: {possible_row_range:?} possible_column_range: {possible_column_range:?}");
-
-                    for &delta_row_index in &possible_row_range {
-                        for &delta_column_index in &possible_column_range {
-                            println!("delta_row_index: {delta_row_index:?} delta_column_index: {delta_column_index:?}");
-
-                            let byte = buffer[delta_row_index][delta_column_index];
-                            println!("byte: {byte}");
-
-                            if byte == b' ' {
-                                buffer[delta_row_index][delta_column_index] = b'1';
-                            } else if byte != b'*' {
-                                buffer[delta_row_index][delta_column_index] = byte + 1;
-                            }
-                        }
+pub fn annotate(mf: &[&str]) -> Vec<String> {
+    let mut out: Vec<Vec<char>> = Vec::new();
+    for (i, r) in mf.iter().enumerate() {
+        out.push(Vec::new());
+        let r = r.as_bytes();
+        for (j, _) in r.iter().enumerate() {
+            let mut total = 0;
+            for offset in OFFSETS {
+                let cell_result = proc(mf, (i, j), *offset) as u8;
+                total += cell_result;
+            }
+            let c = (b'0' + total) as char;
+            out.last_mut()
+                .unwrap()
+                .push(if mf[i].as_bytes()[j] == b' ' {
+                    if total > 0 {
+                        c
+                    } else {
+                        ' '
                     }
-                }
-            }
-        }
-
-        for row in &buffer {
-            if let Ok(row) = from_utf8(row) {
-                result.push(row.to_string());
-            }
+                } else {
+                    '*'
+                });
         }
     }
+    out.into_iter().map(|r| r.into_iter().collect()).collect()
+}
 
-    result
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::black_box;
+    use test::Bencher;
+
+    const SPARSE_MINEFIELD: [&str; 25] = [
+        "                         ",
+        "    *                    ",
+        "                         ",
+        "           *             ",
+        "                         ",
+        "    *                    ",
+        "                         ",
+        "                  *      ",
+        "                         ",
+        "                         ",
+        "                         ",
+        "   *                     ",
+        "                         ",
+        "                         ",
+        "                *        ",
+        "                         ",
+        "     *                   ",
+        "                         ",
+        "                         ",
+        "                      *  ",
+        "                         ",
+        "                         ",
+        "               *         ",
+        "                         ",
+        "                         ",
+    ];
+
+    const DENSE_MINEFIELD: [&str; 25] = [
+        "*    *  *    *  *  *   *  *",
+        " *  *    *  *  *    *  *  *",
+        "  *  *  *  *    *  *  *    ",
+        "*    *  *  *  *  *    *   *",
+        "  *  *  *    *   *  *  *  *",
+        "*  *    *  *  *    *   *  *",
+        "  *    *  *  *    *  *  *  ",
+        "*  *  *  *    *  *  *    * ",
+        "  *  *  *  *  *    *  *  * ",
+        "*    *    *  *  *  *  *    ",
+        "  *  *  *    *   *  *  *  *",
+        "*  *    *  *  *  *  *    * ",
+        "  *  *  *  *  *    *  *  * ",
+        "*    *  *  *    *  *  *    ",
+        "  *  *  *    *  *  *    * *",
+        "*  *    *  *  *    *  *  * ",
+        "  *  *  *  *  *  *  *    * ",
+        "*    *    *  *  *    *  *  ",
+        "  *  *  *    *  *  *  *  * ",
+        "*  *  *  *  *  *    *    * ",
+        "  *    *  *  *    *  *  * *",
+        "*  *    *  *  *  *  *  *   ",
+        "  *  *  *  *  *    *    * *",
+        "*  *    *  *  *  *  *  *  *",
+        "  *  *  *    *   *  *    * ",
+    ];
+
+    #[bench]
+    fn bench_sparse(b: &mut Bencher) {
+        // iteration    2          7,704.31 ns/iter (+/- 164.31)
+        b.iter(|| black_box(annotate(black_box(&SPARSE_MINEFIELD))));
+    }
+
+    #[bench]
+    fn bench_dense(b: &mut Bencher) {
+        // iteration    2          8,359.85 ns/iter (+/- 131.41)
+        b.iter(|| black_box(annotate(black_box(&DENSE_MINEFIELD))));
+    }
 }

@@ -38,7 +38,6 @@ fn no_columns() {
 }
 
 #[test]
-#[ignore]
 fn no_mines() {
     #[rustfmt::skip]
     run_test(&[
@@ -113,7 +112,6 @@ fn vertical_line() {
 }
 
 #[test]
-#[ignore]
 fn vertical_line_mines_at_edges() {
     #[rustfmt::skip]
     run_test(&[
