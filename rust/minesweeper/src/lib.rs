@@ -5,9 +5,9 @@ extern crate test;
 // https://exercism.org/tracks/rust/exercises/minesweeper/solutions/kstep
 
 // i want to store and reuse offsets for subsequent rows
-static HI_OFFSETS: &[(isize, isize)] = &[(-1, -1), (-1, 0), (-1, 1)];
-static MI_OFFSETS: &[(isize, isize)] = &[(0, -1), (0, 0), (0, 1)];
-static LO_OFFSETS: &[(isize, isize)] = &[(1, -1), (1, 0), (1, 1)];
+const HI_OFFSETS: &[(isize, isize)] = &[(-1, -1), (-1, 0), (-1, 1)];
+const MI_OFFSETS: &[(isize, isize)] = &[(0, -1), (0, 0), (0, 1)];
+const LO_OFFSETS: &[(isize, isize)] = &[(1, -1), (1, 0), (1, 1)];
 
 fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> u8 {
     let Ok::<usize, _>(i) = (cord.0 as isize + offset.0).try_into() else {
@@ -27,7 +27,7 @@ fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> u8 {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 struct Cell {
     hi: u8,
     mi: u8,
@@ -40,7 +40,6 @@ impl Cell {
     }
 }
 
-#[must_use]
 pub fn annotate(field: &[&str]) -> Vec<String> {
     let mut out: Vec<String> = Vec::with_capacity(field.len());
     let mut prev_cells: Vec<Cell> = Vec::new();
