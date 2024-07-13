@@ -10,42 +10,40 @@ static OFFSETS: &[(isize, isize)] = &[
     (-1,  1), (0,  1), (1,  1),
 ];
 
-fn proc(mf: &[&str], p: (usize, usize), offset: (isize, isize)) -> usize {
-    let i: usize = match (p.0 as isize + offset.0).try_into() {
-        Ok(i) => i,
-        Err(_) => return 0,
+fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> usize {
+    let Ok::<usize, _>(i) = (cord.0 as isize + offset.0).try_into() else {
+        return 0;
     };
-    let r = match mf.get(i) {
-        Some(r) => r.as_bytes(),
-        None => return 0,
+    let Some(row) = field.get(i) else {
+        return 0;
     };
-    let j: usize = match (p.1 as isize + offset.1).try_into() {
-        Ok(j) => j,
-        Err(_) => return 0,
+    let Ok::<usize, _>(j) = (cord.1 as isize + offset.1).try_into() else {
+        return 0;
     };
-    match r.get(j).as_ref() {
-        Some(b' ') | None => 0,
-        Some(b'*') => 1,
-        _ => panic!("{:?}", r[j]),
+    match row.as_bytes().get(j) {
+        None => 0,
+        Some(&b' ') => 0,
+        Some(&b'*') => 1,
+        _ => panic!(),
     }
 }
 
 #[must_use]
-pub fn annotate(mf: &[&str]) -> Vec<String> {
-    let mut out: Vec<Vec<char>> = Vec::new();
-    for (i, r) in mf.iter().enumerate() {
-        out.push(Vec::new());
+pub fn annotate(field: &[&str]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::with_capacity(field.len());
+    for (i, r) in field.iter().enumerate() {
+        out.push(String::with_capacity(field.first().unwrap().len()));
         let r = r.as_bytes();
         for (j, _) in r.iter().enumerate() {
             let mut total = 0;
             for offset in OFFSETS {
-                let cell_result = proc(mf, (i, j), *offset) as u8;
+                let cell_result = proc(field, (i, j), *offset) as u8;
                 total += cell_result;
             }
             let c = (b'0' + total) as char;
             out.last_mut()
                 .unwrap()
-                .push(if mf[i].as_bytes()[j] == b' ' {
+                .push(if field[i].as_bytes()[j] == b' ' {
                     if total > 0 {
                         c
                     } else {
@@ -56,7 +54,7 @@ pub fn annotate(mf: &[&str]) -> Vec<String> {
                 });
         }
     }
-    out.into_iter().map(|r| r.into_iter().collect()).collect()
+    out
 }
 
 #[cfg(test)]
@@ -124,12 +122,14 @@ mod tests {
     #[bench]
     fn bench_sparse(b: &mut Bencher) {
         // iteration    2          7,704.31 ns/iter (+/- 164.31)
+        // iteration    3          3,963.78 ns/iter (+/- 133.49)
         b.iter(|| black_box(annotate(black_box(&SPARSE_MINEFIELD))));
     }
 
     #[bench]
     fn bench_dense(b: &mut Bencher) {
         // iteration    2          8,359.85 ns/iter (+/- 131.41)
+        // iteration    3          4,666.15 ns/iter (+/- 80.93)
         b.iter(|| black_box(annotate(black_box(&DENSE_MINEFIELD))));
     }
 }
