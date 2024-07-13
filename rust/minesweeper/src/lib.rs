@@ -10,7 +10,7 @@ static OFFSETS: &[(isize, isize)] = &[
     (-1,  1), (0,  1), (1,  1),
 ];
 
-fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> usize {
+fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> u8 {
     let Ok::<usize, _>(i) = (cord.0 as isize + offset.0).try_into() else {
         return 0;
     };
@@ -32,27 +32,20 @@ fn proc(field: &[&str], cord: (usize, usize), offset: (isize, isize)) -> usize {
 pub fn annotate(field: &[&str]) -> Vec<String> {
     let mut out: Vec<String> = Vec::with_capacity(field.len());
     for (i, r) in field.iter().enumerate() {
-        out.push(String::with_capacity(field.first().unwrap().len()));
+        let mut s = String::with_capacity(field.first().unwrap().len());
         let r = r.as_bytes();
-        for (j, _) in r.iter().enumerate() {
-            let mut total = 0;
+        for (j, x) in r.iter().enumerate() {
+            let mut cell_result = 0;
             for offset in OFFSETS {
-                let cell_result = proc(field, (i, j), *offset) as u8;
-                total += cell_result;
+                cell_result += proc(field, (i, j), *offset);
             }
-            let c = (b'0' + total) as char;
-            out.last_mut()
-                .unwrap()
-                .push(if field[i].as_bytes()[j] == b' ' {
-                    if total > 0 {
-                        c
-                    } else {
-                        ' '
-                    }
-                } else {
-                    '*'
-                });
+            s.push(match x {
+                b' ' if cell_result == 0 => ' ',
+                b' ' => char::from(b'0' + cell_result),
+                _ => '*',
+            });
         }
+        out.push(s);
     }
     out
 }
