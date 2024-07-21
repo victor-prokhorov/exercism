@@ -1,0 +1,81 @@
+# | Register | Usage        | Type    | Description                   |
+# | -------- | ------------ | ------- | ----------------------------- |
+# | `$a0`    | input        | integer | given number                  |
+# | `$a1`    | input/output | address | null-terminated result string |
+# | `$t0-9`  | temporary    | any     | for temporary storage         |
+
+.data 
+
+digits: .byte 'I', 'V', 'X', 'L', 'C', 'D', 'M'
+
+rev_output: .byte 10
+
+.text
+
+.globl roman
+
+roman:
+        # li      $t0, 0          # `d` index pointer inside `digits`, we will need to convert in bytes to load
+        la      $t0, digits     # or just directly use the address, and `d` is the char at this index, it's offset in bytes any way so simpler to use addr directly
+        la      $t9, rev_output # running pointer
+        move    $t8, $t9        # base - we will use this addr to check where to stop when writing rtl
+
+main_loop:
+        ble     $a0, 0, rev_loop
+        li      $t1, 10         # `$t1` will be used as temporary register to load 10, 5, 4, 8, 9
+        div     $a0, $t1
+        mfhi    $t2             # smallest digit, `n`
+        mflo    $a0             # disgard this digit
+        # `d0` insert digit at index
+        li      $t1, 5
+        div     $t2, $t1
+        mfhi    $t3
+        li      $t1, 4
+        bge     $t3, $t1, insert_d_1
+        # inside `n % 5 < 4` which is `1 | 2 | 3    |     6 | 7 | 8`
+        #                                     III                V+III
+        # don't forget we push in reverse order, so if we are building 8 we first will push 3 times 'I' then 'V'
+        lb      $t4, ($t0)      # in this loop we always write same digit, we can load it once before the loop
+insert_d_loop:
+        beq     $t3, $0, insert_d_1     # we start with `n % 5` and loop until it's zero
+        sb      $t4, ($t9)      
+        addi    $t9, $t9, 1     # but we move the pointer were we write
+        subi    $t3, $t3, 1
+        j       insert_d_loop
+insert_d_1:                     # insert digit at index + 1 which should be added for 4    |    5      | 6 | 7 | 8
+                                #                                                    IV-sub  V-itself    VI-add
+        blt     $t2, 4, insert_d_2
+        bgt     $t2, 8, insert_d_2
+        lb      $t4, 1($t0)     # read at index + 1
+        sb      $t4, ($t9)
+        addi    $t9, $t9, 1
+insert_d_2:
+        # should we insert index + 2? if we want to build "IX" here we can push 'X'
+        bne     $t2, 9, insert_d_3
+        lb      $t4, 2($t0)
+        sb      $t4, ($t9)
+        addi    $t9, $t9, 1
+insert_d_3:
+        # substractive logic here, for example if we pushed 'V' or 'X' and we want 4 or 9 we can push 'I' right now
+        seq     $t5, $t2, 4
+        seq     $t6, $t2, 9
+        add     $t2, $t5, $t6   # it's either 4 or 9 so 1 or neither of those so 0 in which case we done
+        beq     $t2, $0, prepare_next
+        lb      $t4, ($t0)      # back to `d` position
+        sb      $t4, ($t9)
+        addi    $t9, $t9, 1
+        # prepare next iteration
+prepare_next:
+        li      $t1, 2
+        add     $t0, $t0, $t1   # finaly move index
+        j       main_loop
+
+rev_loop:
+        beq     $t8, $t9, exit
+        lb      $t4, -1($t9)    # without offset we would write null termination
+        subi    $t9, $t9, 1
+        sb      $t4, ($a1)
+        addi    $a1, $a1, 1
+        j       rev_loop
+exit:
+        jr $ra

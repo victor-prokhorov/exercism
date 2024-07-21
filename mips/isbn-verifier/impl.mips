@@ -1,0 +1,35 @@
+.globl is_valid
+
+is_valid:
+   li   $t0, 10                 # weight
+   li   $t8, 0                  # accumulated
+loop:
+   lb   $t1, ($a0)              # load byte from pointer to register `$t1`
+   addi $a0, $a0, 1             # move pointer
+   beqz $t1, validate           # if null `validate` before exit
+   bne  $t1, 'X', byte          # if not 'X' `byte`
+   bne  $t0, 1, invalid         # `$t1` is 'X', if weight is not `1` `invalid`
+   li   $t1, '0'
+   addi $t1, $t1, 10            # offset `$t1` by 10 byte from '0'
+   j    accumulate
+byte:
+   beq  $t1, '-', loop
+   blt  $t1, '0', invalid
+   bgt  $t1, '9', invalid
+accumulate:
+   sub  $t1, $t1, '0'           # `$t1` is number now
+   mul  $t1, $t1, $t0           # multiply by weight
+   add  $t8, $t8, $t1           # accumulate
+   sub  $t0, $t0, 1             
+   j    loop
+validate:        
+   bnez $t0, invalid            # if weight was not decremented to zero `invalid`
+   rem  $t8, $t8, 11            # remainder of signed division
+   beqz $t8, valid
+   j invalid
+valid:
+   li $v0, 1
+   jr $ra
+invalid:
+   li $v0, 0
+   jr $ra
