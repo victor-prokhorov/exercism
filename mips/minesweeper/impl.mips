@@ -26,16 +26,17 @@
 annotate:
         move    $t0, $a0                        # `$a0`
         move    $t1, $a1                        # `$a1`
-calc_width_height_loop:
-        li      $t2, 0                          # width
-        li      $t3, 0                          # height
+        li      $t2, 0                          # width, row length
+        li      $t3, 0                          # height, column length
         li      $t5, 0                          # first row flag
-        lb      $t4, ($t0)                      # character, cell or formatting like `\n` or `\0`
+calc_width_height_loop:
+        lb      $t4, ($t0)                      # character, cell or formatting such as `\n` or `\0`
         beq     $t4, '\0', write_loop_setup 
         beq     $t4, '\n', set_flag             # we bump into `\n` so we set first row flag
         addi    $t3, $t3, 1                     # right now we simply accumulate into `$t3` all characters count
         beq     $t5, 1, skip_increment          # if we set the flag we don't increment anymore
         addi    $t2, $t2, 1
+        j       skip_increment
 set_flag:
         li      $t5, 1
 skip_increment:
@@ -44,28 +45,42 @@ skip_increment:
 write_loop_setup:
         div     $t3, $t2                        # divide all cells count by first row count
         mflo    $t3                             # quotient is the height
-        li      $t4, 0                          # cell index
+        li      $t4, 0                          # flatten cell index
         move    $t0, $a0
         move    $t1, $a1
 write_loop:                                     # each iteration handle single cell
         li      $t5, 0                          # mine count for the cell
-        lb      $t6, ($t0)
+        lb      $t6, ($t0)                      # cell character
         beq     $t6, '\0', end
         beq     $t6, '\n', write_same
-        beq     $t6, '*', write_same
+        beq     $t6, '*', write_same            # after this line we start to process the cell
+        div     $t4, $t3                        # divide flatten cell index by width
+        mflo    $t8                             # y-coordinate (quotient)
+        mfhi    $t9                             # x-coordinate (remainder)
+# tmp just left offset
+        subi    $t9, $t9, 1
+        blt     $t9, $zero, no_mines
+        bgt     $t9, $t2, no_mines              # after this line we know that the offset is valid
+        lb      $t6, -1($t0)                    # but we still need to find out if there some mines
+        bne     $t6, '*', no_mines
+        addi    $t5, $t5, 1
+# tmp just left offset
+no_mines: # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
         bne     $t7, '0', non_zero_mine_count
         li      $t7, ' '                        # we render ' ' instead of '0'
 non_zero_mine_count:
         sb      $t7, ($t1)
-        addi    $t0, $t0, 1
+        addi    $t0, $t0, 1                     # todo: i prefer to increment everything at the end (it's easier to do arithmetics) but i have to repeat those 3 lines
         addi    $t1, $t1, 1
+        addi    $t4, $t4, 1
         j       write_loop
 write_same:
         sb      $t6, ($t1)
         addi    $t0, $t0, 1
         addi    $t1, $t1, 1
+        addi    $t4, $t4, 1
         j       write_loop
 end:
         jr      $ra
