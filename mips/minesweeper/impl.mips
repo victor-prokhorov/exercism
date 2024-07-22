@@ -54,17 +54,32 @@ write_loop:                                     # each iteration handle single c
         beq     $t6, '\0', end
         beq     $t6, '\n', write_same
         beq     $t6, '*', write_same            # after this line we start to process the cell
+left:
         div     $t4, $t3                        # divide flatten cell index by width
         mflo    $t8                             # y-coordinate (quotient)
         mfhi    $t9                             # x-coordinate (remainder)
-# tmp just left offset
         subi    $t9, $t9, 1
-        blt     $t9, $zero, no_mines
-        bgt     $t9, $t2, no_mines              # after this line we know that the offset is valid
+        blt     $t9, $zero, right
+        bgt     $t9, $t2, right                 # after this line we know that the offset is valid
         lb      $t6, -1($t0)                    # but we still need to find out if there some mines
-        bne     $t6, '*', no_mines
+        bne     $t6, '*', right
         addi    $t5, $t5, 1
-# tmp just left offset
+right:
+        div     $t4, $t3
+        mflo    $t8
+        mfhi    $t9
+        addi    $t9, $t9, 1
+        blt     $t9, $zero, top
+        bgt     $t9, $t2, top
+        lb      $t6, 1($t0)
+        bne     $t6, '*', top
+        addi    $t5, $t5, 1
+top:
+bot:
+left_top:
+right_top:
+left_bot:
+right_bot:
 no_mines: # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
@@ -80,7 +95,6 @@ write_same:
         sb      $t6, ($t1)
         addi    $t0, $t0, 1
         addi    $t1, $t1, 1
-        # addi    $t4, $t4, 1 # !!! we don't increment this it's not a cell
         j       write_loop
 end:
         jr      $ra
