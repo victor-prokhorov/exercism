@@ -24,59 +24,105 @@
 .globl annotate
 
 annotate:
-        move    $t0, $a0
-        move    $t1, $a1
-        li      $t3, 0                          # new lines count, rows, **y len**
-        li      $t4, 0                          # all characters until zero termination count
-size:
-        lb      $t2, ($t0)
+        move    $t0, $a0                        # `$a0`
+        move    $t1, $a1                        # `$a1`
+calc_width_height_loop:
+        li      $t2, 0                          # width
+        li      $t3, 0                          # height
+        li      $t5, 0                          # first row flag
+        lb      $t4, ($t0)                      # character, cell or formatting like `\n` or `\0`
+        beq     $t4, '\0', write_loop_setup 
+        beq     $t4, '\n', set_flag             # we bump into `\n` so we set first row flag
+        addi    $t3, $t3, 1                     # right now we simply accumulate into `$t3` all characters count
+        beq     $t5, 1, skip_increment          # if we set the flag we don't increment anymore
+        addi    $t2, $t2, 1
+set_flag:
+        li      $t5, 1
+skip_increment:
         addi    $t0, $t0, 1
-        addi    $t4, $t4, 1                     # always increment
-        bne     $t2, '\n', skip_n_count         # increment if new line
-        addi    $t3, $t3, 1
-skip_n_count:
-        bne     $t2, '\0', size
-        sub     $t5, $t4, $t3                   # non new lines characters
-        div     $t5, $t3
-        mflo    $t4                             # columns, **x len**
-        li      $t5, 0                          # flatten index, we will build (x, y) from it
+        j       calc_width_height_loop
+write_loop_setup:
+        div     $t3, $t2                        # divide all cells count by first row count
+        mflo    $t3                             # quotient is the height
+        li      $t4, 0                          # cell index
         move    $t0, $a0
         move    $t1, $a1
-loop:
-        li      $t9, 0                          # mines count
-        lb      $t2, ($t0)
-        # check offseted cells
-        div     $t5, $t3
-        mflo    $t6                             # quotient, y coordinate
-        mfhi    $t7                             # remainder, x coordinate
-        # left
-        subi     $t8, $t7, 1                     # left x coord
-        # $t8 >= 0 && $t8 < 3 && lb == '*' => $t9++
-        bltz    $t8, next_check
-        bge     $t8, $t4, next_check
-        # index is in range horizontally, safe to load
-        lb      $t5, -1($t0)                     # character at offset (left)
-        beq     $t5, '*', increment
-# ! i have overlaps on t3 and t5 it wont work !
-next_check:
-        li      $t5, '0'
-        add     $t5, $t3, $t9
-        bne     $t5, '0', count
-        li      $t5, ' '
-count:
-        beq     $t2, '\n', skip_count
-        addi    $t5, $t5, 1                     # increment characters count (wihtou \n)
-skip_count:
-        sb      $t2, ($t1)                      # and store '\n'
-        # increment both ptrs at the end
+write_loop:                                     # each iteration handle single cell
+        li      $t5, 0                          # mine count for the cell
+        lb      $t6, ($t0)
+        beq     $t6, '\0', end
+        beq     $t6, '\n', write_same
+        beq     $t6, '*', write_same
+        li      $t7, '0'                        # mine count as character
+        add     $t7, $t7, $t5                   # add mine count
+        bne     $t7, '0', non_zero_mine_count
+        li      $t7, ' '                        # we render ' ' instead of '0'
+non_zero_mine_count:
+        sb      $t7, ($t1)
+        addi    $t0, $t0, 1
         addi    $t1, $t1, 1
+        j       write_loop
+write_same:
+        sb      $t6, ($t1)
         addi    $t0, $t0, 1
-        bne     $t2, '\0', loop
+        addi    $t1, $t1, 1
+        j       write_loop
 end:
-        # li      $t2, '\0'
-        # sb      $t2, ($t1)
         jr      $ra
 
-increment:
-        addi    $t9, $t9, 1
-        j       next_check
+
+#         li      $t4, 0                          # all characters until zero termination count
+# size:
+#         lb      $t2, ($t0)
+#         addi    $t0, $t0, 1
+#         addi    $t4, $t4, 1                     # always increment
+#         bne     $t2, '\n', skip_n_count         # increment if new line
+#         addi    $t3, $t3, 1
+# skip_n_count:
+#         bne     $t2, '\0', size
+#         sub     $t5, $t4, $t3                   # non new lines characters
+#         div     $t5, $t3
+#         mflo    $t4                             # columns, **x len**
+#         li      $t5, 0                          # flatten index, we will build (x, y) from it
+#         move    $t0, $a0
+#         move    $t1, $a1
+# loop:
+#         li      $t9, 0                          # mines count
+#         lb      $t2, ($t0)
+#         # check offseted cells
+#         div     $t5, $t3
+#         mflo    $t6                             # quotient, y coordinate
+#         mfhi    $t7                             # remainder, x coordinate
+#         # left
+#         subi     $t8, $t7, 1                     # left x coord
+#         # $t8 >= 0 && $t8 < 3 && lb == '*' => $t9++
+#         bltz    $t8, next_check
+#         bge     $t8, $t4, next_check
+#         # index is in range horizontally, safe to load
+#         lb      $t5, -1($t0)                     # character at offset (left)
+#         beq     $t5, '*', increment
+#
+# # ! i have overlaps on t3 and t5 it wont work !
+#
+# next_check:
+#         li      $t5, '0'
+#         add     $t5, $t3, $t9
+#         bne     $t5, '0', count
+#         li      $t5, ' '
+# count:
+#         beq     $t2, '\n', skip_count
+#         addi    $t5, $t5, 1                     # increment characters count (wihtou \n)
+# skip_count:
+#         sb      $t2, ($t1)                      # and store '\n'
+#         # increment both ptrs at the end
+#         addi    $t1, $t1, 1
+#         addi    $t0, $t0, 1
+#         bne     $t2, '\0', loop
+# end:
+#         # li      $t2, '\0'
+#         # sb      $t2, ($t1)
+#         jr      $ra
+# 
+# increment:
+#         addi    $t9, $t9, 1
+#         j       next_check
