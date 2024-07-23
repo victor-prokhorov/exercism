@@ -55,32 +55,106 @@ write_loop:                                     # each iteration handle single c
         beq     $t6, '\n', write_same
         beq     $t6, '*', write_same            # after this line we start to process the cell
 left:
-        div     $t4, $t3                        # divide flatten cell index by width
-        mflo    $t8                             # y-coordinate (quotient)
-        mfhi    $t9                             # x-coordinate (remainder)
-        subi    $t9, $t9, 1
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        addi    $t9, $t9, 1                     # y
         blt     $t9, $zero, right
-        bgt     $t9, $t2, right                 # after this line we know that the offset is valid
-        lb      $t6, -1($t0)                    # but we still need to find out if there some mines
+        bge     $t9, $t2, right
+        blt     $t8, $zero, right
+        bge     $t8, $t3, right
+        lb      $t6, 1($t0)
         bne     $t6, '*', right
         addi    $t5, $t5, 1
 right:
-        div     $t4, $t3
+        div     $t4, $t2
         mflo    $t8
         mfhi    $t9
-        addi    $t9, $t9, 1
+        subi    $t9, $t9, 1                     # y
         blt     $t9, $zero, top
-        bgt     $t9, $t2, top
-        lb      $t6, 1($t0)
+        bge     $t9, $t2, top
+        blt     $t8, $zero, top
+        bge     $t8, $t3, top
+        lb      $t6, -1($t0)
         bne     $t6, '*', top
         addi    $t5, $t5, 1
-top:
+top:                                            # (0,-1)
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        addi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, bot
+        bge     $t9, $t2, bot
+        blt     $t8, $zero, bot
+        bge     $t8, $t3, bot
+        lb      $t6, 4($t0)
+        bne     $t6, '*', bot
+        addi    $t5, $t5, 1
 bot:
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        subi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, left_top
+        bge     $t9, $t2, left_top
+        blt     $t8, $zero, left_top
+        bge     $t8, $t3, left_top
+        lb      $t6, -4($t0)
+        bne     $t6, '*', left_top
+        addi    $t5, $t5, 1
 left_top:
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        addi    $t9, $t9, 1                     # x
+        addi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, right_top
+        bge     $t9, $t2, right_top
+        blt     $t8, $zero, right_top
+        bge     $t8, $t3, right_top
+        lb      $t6, 5($t0)
+        bne     $t6, '*', right_top
+        addi    $t5, $t5, 1
 right_top:
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        subi    $t9, $t9, 1                     # x
+        addi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, left_bot
+        bge     $t9, $t2, left_bot
+        blt     $t8, $zero, left_bot
+        bge     $t8, $t3, left_bot
+        lb      $t6, 3($t0)
+        bne     $t6, '*', left_bot
+        addi    $t5, $t5, 1
 left_bot:
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        subi    $t9, $t9, 1                     # x
+        addi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, right_bot
+        bge     $t9, $t2, right_bot
+        blt     $t8, $zero, right_bot
+        bge     $t8, $t3, right_bot
+        lb      $t6, 5($t0)
+        bne     $t6, '*', right_bot
+        addi    $t5, $t5, 1
 right_bot:
-no_mines: # write character
+        div     $t4, $t2
+        mflo    $t8
+        mfhi    $t9
+        subi    $t9, $t9, 1                     # x
+        subi    $t8, $t8, 1                     # y
+        blt     $t9, $zero, no_mines
+        bge     $t9, $t2, no_mines
+        blt     $t8, $zero, no_mines
+        bge     $t8, $t3, no_mines
+        lb      $t6, -5($t0)
+        bne     $t6, '*', no_mines
+        addi    $t5, $t5, 1
+no_mines:                                       # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
         bne     $t7, '0', non_zero_mine_count
