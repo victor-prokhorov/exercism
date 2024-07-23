@@ -54,106 +54,104 @@ write_loop:                                     # each iteration handle single c
         beq     $t6, '\0', end
         beq     $t6, '\n', write_same
         beq     $t6, '*', write_same            # after this line we start to process the cell
-left:
+
+left: # (-1,0) -> (1,0) this is always only 1 cell to the left
         div     $t4, $t2
-        mflo    $t8
         mfhi    $t9
-        addi    $t9, $t9, 1                     # y
+        addi    $t9, $t9, 1 # x + 1
         blt     $t9, $zero, right
         bge     $t9, $t2, right
-        blt     $t8, $zero, right
-        bge     $t8, $t3, right
-        lb      $t6, 1($t0)
+        lb      $t6, 1($t0) # just previous cell
         bne     $t6, '*', right
         addi    $t5, $t5, 1
-right:
+right: # reverse of the previous label
         div     $t4, $t2
-        mflo    $t8
         mfhi    $t9
-        subi    $t9, $t9, 1                     # y
+        subi    $t9, $t9, 1
         blt     $t9, $zero, top
         bge     $t9, $t2, top
         blt     $t8, $zero, top
         bge     $t8, $t3, top
-        lb      $t6, -1($t0)
+        lb      $t6, -1($t0) # just next cell
         bne     $t6, '*', top
         addi    $t5, $t5, 1
-top:                                            # (0,-1)
+
+top: # (0,-1) -> (0,1) 
         div     $t4, $t2
         mflo    $t8
-        mfhi    $t9
-        addi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, bot
-        bge     $t9, $t2, bot
+        addi    $t8, $t8, 1 # y + 1
         blt     $t8, $zero, bot
         bge     $t8, $t3, bot
-        lb      $t6, 4($t0)
+        move    $t7, $t0 # copy so we have this pointer for other labels
+        add     $t7, $t7, $t2 # from the current position offset by the width
+        addi    $t7, $t7, 1 # add back the new line we skipped
+        lb      $t6, ($t7)
         bne     $t6, '*', bot
         addi    $t5, $t5, 1
 bot:
         div     $t4, $t2
         mflo    $t8
-        mfhi    $t9
-        subi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, left_top
-        bge     $t9, $t2, left_top
+        subi    $t8, $t8, 1
         blt     $t8, $zero, left_top
         bge     $t8, $t3, left_top
-        lb      $t6, -4($t0)
+        move    $t7, $t0
+        sub     $t7, $t7, $t2
+        subi    $t7, $t7, 1
+        lb      $t6, ($t7)
         bne     $t6, '*', left_top
         addi    $t5, $t5, 1
 left_top:
-        div     $t4, $t2
-        mflo    $t8
-        mfhi    $t9
-        addi    $t9, $t9, 1                     # x
-        addi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, right_top
-        bge     $t9, $t2, right_top
-        blt     $t8, $zero, right_top
-        bge     $t8, $t3, right_top
-        lb      $t6, 5($t0)
-        bne     $t6, '*', right_top
-        addi    $t5, $t5, 1
+        # div     $t4, $t2
+        # mflo    $t8
+        # mfhi    $t9
+        # addi    $t9, $t9, 1                     # x
+        # addi    $t8, $t8, 1                     # y
+        # blt     $t9, $zero, right_top
+        # bge     $t9, $t2, right_top
+        # blt     $t8, $zero, right_top
+        # bge     $t8, $t3, right_top
+        # lb      $t6, 5($t0)
+        # bne     $t6, '*', right_top
+        # addi    $t5, $t5, 1
 right_top:
-        div     $t4, $t2
-        mflo    $t8
-        mfhi    $t9
-        subi    $t9, $t9, 1                     # x
-        addi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, left_bot
-        bge     $t9, $t2, left_bot
-        blt     $t8, $zero, left_bot
-        bge     $t8, $t3, left_bot
-        lb      $t6, 3($t0)
-        bne     $t6, '*', left_bot
-        addi    $t5, $t5, 1
+        # div     $t4, $t2
+        # mflo    $t8
+        # mfhi    $t9
+        # subi    $t9, $t9, 1                     # x
+        # addi    $t8, $t8, 1                     # y
+        # blt     $t9, $zero, left_bot
+        # bge     $t9, $t2, left_bot
+        # blt     $t8, $zero, left_bot
+        # bge     $t8, $t3, left_bot
+        # lb      $t6, 3($t0)
+        # bne     $t6, '*', left_bot
+        # addi    $t5, $t5, 1
 left_bot:
-        div     $t4, $t2
-        mflo    $t8
-        mfhi    $t9
-        subi    $t9, $t9, 1                     # x
-        addi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, right_bot
-        bge     $t9, $t2, right_bot
-        blt     $t8, $zero, right_bot
-        bge     $t8, $t3, right_bot
-        lb      $t6, 5($t0)
-        bne     $t6, '*', right_bot
-        addi    $t5, $t5, 1
+        # div     $t4, $t2
+        # mflo    $t8
+        # mfhi    $t9
+        # subi    $t9, $t9, 1                     # x
+        # addi    $t8, $t8, 1                     # y
+        # blt     $t9, $zero, right_bot
+        # bge     $t9, $t2, right_bot
+        # blt     $t8, $zero, right_bot
+        # bge     $t8, $t3, right_bot
+        # lb      $t6, 5($t0)
+        # bne     $t6, '*', right_bot
+        # addi    $t5, $t5, 1
 right_bot:
-        div     $t4, $t2
-        mflo    $t8
-        mfhi    $t9
-        subi    $t9, $t9, 1                     # x
-        subi    $t8, $t8, 1                     # y
-        blt     $t9, $zero, no_mines
-        bge     $t9, $t2, no_mines
-        blt     $t8, $zero, no_mines
-        bge     $t8, $t3, no_mines
-        lb      $t6, -5($t0)
-        bne     $t6, '*', no_mines
-        addi    $t5, $t5, 1
+        # div     $t4, $t2
+        # mflo    $t8
+        # mfhi    $t9
+        # subi    $t9, $t9, 1                     # x
+        # subi    $t8, $t8, 1                     # y
+        # blt     $t9, $zero, no_mines
+        # bge     $t9, $t2, no_mines
+        # blt     $t8, $zero, no_mines
+        # bge     $t8, $t3, no_mines
+        # lb      $t6, -5($t0)
+        # bne     $t6, '*', no_mines
+        # addi    $t5, $t5, 1
 no_mines:                                       # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
@@ -174,6 +172,14 @@ end:
         jr      $ra
 
 
+        bgt     $t5,0,debug
+debug:
+        move $a0,$t5
+        li $v0,1
+        syscall
+        # li $v0,10
+        # syscall
+#
 #         li      $t4, 0                          # all characters until zero termination count
 # size:
 #         lb      $t2, ($t0)
