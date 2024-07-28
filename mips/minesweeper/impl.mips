@@ -49,109 +49,26 @@ write_loop_setup:
         move    $t0, $a0
         move    $t1, $a1
 write_loop:                                     # each iteration handle single cell
-        li      $t5, 0                          # mine count for the cell
-        lb      $t6, ($t0)                      # cell character
-        beq     $t6, '\0', end
-        beq     $t6, '\n', write_same
-        beq     $t6, '*', write_same            # after this line we start to process the cell
-
-left: # (-1,0) -> (1,0) this is always only 1 cell to the left
-        div     $t4, $t2
-        mfhi    $t9
-        addi    $t9, $t9, 1 # x + 1
-        blt     $t9, $zero, right
-        bge     $t9, $t2, right
-        lb      $t6, 1($t0) # just previous cell
-        bne     $t6, '*', right
-        addi    $t5, $t5, 1
-right: # reverse of the previous label
-        div     $t4, $t2
-        mfhi    $t9
-        subi    $t9, $t9, 1
-        blt     $t9, $zero, top
-        bge     $t9, $t2, top
-        blt     $t8, $zero, top
-        bge     $t8, $t3, top
-        lb      $t6, -1($t0) # just next cell
-        bne     $t6, '*', top
-        addi    $t5, $t5, 1
-
-top: # (0,-1) -> (0,1) 
-        div     $t4, $t2
-        mflo    $t8
-        addi    $t8, $t8, 1 # y + 1
-        blt     $t8, $zero, bot
-        bge     $t8, $t3, bot
-        move    $t7, $t0 # copy so we have this pointer for other labels
-        add     $t7, $t7, $t2 # from the current position offset by the width
-        addi    $t7, $t7, 1 # add back the new line we skipped
+         li      $t5, 0                          # mine count for the cell
+         lb      $t6, ($t0)                      # cell character
+         beq     $t6, '\0', end
+         beq     $t6, '\n', write_new_line
+         beq     $t6, '*', write_mine            # after this line we start to process the cell
+left_top: # (-1,-1) -> (1,1) 
+        div     $t4, $t2 # all chars count / width
+        mflo    $t8 # height, y
+        mfhi    $t9 # x offset
+        addi    $t8, $t8, 1 # get the offsets of the mine from the current cell
+        addi    $t9, $t9, 1
+        bge     $t9, $t2, no_mines
+        bge     $t8, $t3, no_mines
+        mul     $t7, $t8, $t2 # mul row by width
+        add     $t7, $t7, $t8 # but we need to add also \n chars for each line so we can just add it
+        add     $t7, $t7, $t9 # add back x offset to get total offset from ptr
+        add     $t7, $t7, $a0 # get ptr at other cell we check to see if it's a mine
         lb      $t6, ($t7)
-        bne     $t6, '*', bot
+        bne     $t6, '*', no_mines
         addi    $t5, $t5, 1
-bot:
-        div     $t4, $t2
-        mflo    $t8
-        subi    $t8, $t8, 1
-        blt     $t8, $zero, left_top
-        bge     $t8, $t3, left_top
-        move    $t7, $t0
-        sub     $t7, $t7, $t2
-        subi    $t7, $t7, 1
-        lb      $t6, ($t7)
-        bne     $t6, '*', left_top
-        addi    $t5, $t5, 1
-left_top:
-        # div     $t4, $t2
-        # mflo    $t8
-        # mfhi    $t9
-        # addi    $t9, $t9, 1                     # x
-        # addi    $t8, $t8, 1                     # y
-        # blt     $t9, $zero, right_top
-        # bge     $t9, $t2, right_top
-        # blt     $t8, $zero, right_top
-        # bge     $t8, $t3, right_top
-        # lb      $t6, 5($t0)
-        # bne     $t6, '*', right_top
-        # addi    $t5, $t5, 1
-right_top:
-        # div     $t4, $t2
-        # mflo    $t8
-        # mfhi    $t9
-        # subi    $t9, $t9, 1                     # x
-        # addi    $t8, $t8, 1                     # y
-        # blt     $t9, $zero, left_bot
-        # bge     $t9, $t2, left_bot
-        # blt     $t8, $zero, left_bot
-        # bge     $t8, $t3, left_bot
-        # lb      $t6, 3($t0)
-        # bne     $t6, '*', left_bot
-        # addi    $t5, $t5, 1
-left_bot:
-        # div     $t4, $t2
-        # mflo    $t8
-        # mfhi    $t9
-        # subi    $t9, $t9, 1                     # x
-        # addi    $t8, $t8, 1                     # y
-        # blt     $t9, $zero, right_bot
-        # bge     $t9, $t2, right_bot
-        # blt     $t8, $zero, right_bot
-        # bge     $t8, $t3, right_bot
-        # lb      $t6, 5($t0)
-        # bne     $t6, '*', right_bot
-        # addi    $t5, $t5, 1
-right_bot:
-        # div     $t4, $t2
-        # mflo    $t8
-        # mfhi    $t9
-        # subi    $t9, $t9, 1                     # x
-        # subi    $t8, $t8, 1                     # y
-        # blt     $t9, $zero, no_mines
-        # bge     $t9, $t2, no_mines
-        # blt     $t8, $zero, no_mines
-        # bge     $t8, $t3, no_mines
-        # lb      $t6, -5($t0)
-        # bne     $t6, '*', no_mines
-        # addi    $t5, $t5, 1
 no_mines:                                       # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
@@ -163,75 +80,18 @@ non_zero_mine_count:
         addi    $t1, $t1, 1
         addi    $t4, $t4, 1
         j       write_loop
-write_same:
+write_new_line:
         sb      $t6, ($t1)
         addi    $t0, $t0, 1
         addi    $t1, $t1, 1
+        # here we don't increment cell count
+        j       write_loop
+write_mine: # we need a diff actually between \n and * which we write here
+        sb      $t6, ($t1)
+        addi    $t0, $t0, 1
+        addi    $t1, $t1, 1
+        addi    $t4, $t4, 1
         j       write_loop
 end:
         jr      $ra
 
-
-        bgt     $t5,0,debug
-debug:
-        move $a0,$t5
-        li $v0,1
-        syscall
-        # li $v0,10
-        # syscall
-#
-#         li      $t4, 0                          # all characters until zero termination count
-# size:
-#         lb      $t2, ($t0)
-#         addi    $t0, $t0, 1
-#         addi    $t4, $t4, 1                     # always increment
-#         bne     $t2, '\n', skip_n_count         # increment if new line
-#         addi    $t3, $t3, 1
-# skip_n_count:
-#         bne     $t2, '\0', size
-#         sub     $t5, $t4, $t3                   # non new lines characters
-#         div     $t5, $t3
-#         mflo    $t4                             # columns, **x len**
-#         li      $t5, 0                          # flatten index, we will build (x, y) from it
-#         move    $t0, $a0
-#         move    $t1, $a1
-# loop:
-#         li      $t9, 0                          # mines count
-#         lb      $t2, ($t0)
-#         # check offseted cells
-#         div     $t5, $t3
-#         mflo    $t6                             # quotient, y coordinate
-#         mfhi    $t7                             # remainder, x coordinate
-#         # left
-#         subi     $t8, $t7, 1                     # left x coord
-#         # $t8 >= 0 && $t8 < 3 && lb == '*' => $t9++
-#         bltz    $t8, next_check
-#         bge     $t8, $t4, next_check
-#         # index is in range horizontally, safe to load
-#         lb      $t5, -1($t0)                     # character at offset (left)
-#         beq     $t5, '*', increment
-#
-# # ! i have overlaps on t3 and t5 it wont work !
-#
-# next_check:
-#         li      $t5, '0'
-#         add     $t5, $t3, $t9
-#         bne     $t5, '0', count
-#         li      $t5, ' '
-# count:
-#         beq     $t2, '\n', skip_count
-#         addi    $t5, $t5, 1                     # increment characters count (wihtou \n)
-# skip_count:
-#         sb      $t2, ($t1)                      # and store '\n'
-#         # increment both ptrs at the end
-#         addi    $t1, $t1, 1
-#         addi    $t0, $t0, 1
-#         bne     $t2, '\0', loop
-# end:
-#         # li      $t2, '\0'
-#         # sb      $t2, ($t1)
-#         jr      $ra
-# 
-# increment:
-#         addi    $t9, $t9, 1
-#         j       next_check
