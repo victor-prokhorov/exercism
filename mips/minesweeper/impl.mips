@@ -60,6 +60,35 @@ left_top: # (-1,-1) -> (1,1)
         mfhi    $t9 # x offset
         addi    $t8, $t8, 1 # get the offsets of the mine from the current cell
         addi    $t9, $t9, 1
+        blt     $t9, $zero, right_bot
+        blt     $t8, $zero, right_bot
+        bge     $t9, $t2, right_bot
+        bge     $t8, $t3, right_bot
+        mul     $t7, $t8, $t2 # mul row by width
+        add     $t7, $t7, $t8 # but we need to add also \n chars for each line so we can just add it
+        add     $t7, $t7, $t9 # add back x offset to get total offset from ptr
+        add     $t7, $t7, $a0 # get ptr at other cell we check to see if it's a mine
+        lb      $t6, ($t7)
+        bne     $t6, '*', right_bot
+        addi    $t5, $t5, 1
+right_bot: # (1,1) -> (-1,-1) 
+        div     $t4, $t2 # all chars count / width
+        mflo    $t8 # height, y
+        mfhi    $t9 # x offset
+        addi    $t8, $t8, -1 # get the offsets of the mine from the current cell
+        addi    $t9, $t9, -1
+
+        # move    $t4, $a0
+        # li      $v0, 11
+        # li      $a0, '\n'
+        # syscall
+        # move    $a0, $t8 # print
+        # li      $v0, 1
+        # syscall
+        # move    $a0, $t4
+
+        blt     $t9, $zero, no_mines
+        blt     $t8, $zero, no_mines
         bge     $t9, $t2, no_mines
         bge     $t8, $t3, no_mines
         mul     $t7, $t8, $t2 # mul row by width
