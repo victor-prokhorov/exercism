@@ -1,27 +1,3 @@
-# | Register | Usage        | Type    | Description                   |
-# | -------- | ------------ | ------- | ----------------------------- |
-# | `$a0`    | input        | address | null-terminated input string  |
-# | `$a1`    | input/output | address | null-terminated output string |
-# | `$t0-9`  | temporary    | any     | for temporary storage         |
-
-# we have a grid of 3 by 3, at flatten index 5
-# 5 / 3; lo(quot) = 1; hi(rem) = 2; (2, 1) 0-indexed
-# 
-# 1    2     3           hi, index-1-3..index-1
-#
-# 4  <cell>  5           mi, index-1, index+1
-#
-# 6    7     8           lo, index+1..index+1+3
-#
-# ...
-# x..   
-# ...
-#
-# index=3, 3/3=>lo=1;hi=0;
-# left => index-1 => |0,2| does not include hi=0
-# top => index-1-2 => |0,2| does include lo=1
-
-
 .data
 
 offsets:
@@ -31,106 +7,104 @@ offsets:
 
 .globl annotate
 
-.macro push
-        addi $sp, $sp, -4
-        sw $ra, ($sp)
-.end_macro
-
-.macro pop
-        lw $ra, ($sp)
-        addi $sp, $sp, 4
-.end_macro
-
 .text
+
 annotate:
-        move    $t0, $a0                        # `$a0`
-        move    $t1, $a1                        # `$a1`
-        li      $t2, 0                          # width, row length
-        li      $t3, 0                          # height, column length
-        li      $t5, 0                          # first row flag
-calc_width_height_loop:
-        lb      $t4, ($t0)                      # character, cell or formatting such as `\n` or `\0`
-        beq     $t4, '\0', write_loop_setup 
-        beq     $t4, '\n', set_flag             # we bump into `\n` so we set first row flag
-        addi    $t3, $t3, 1                     # right now we simply accumulate into `$t3` all characters count
-        beq     $t5, 1, skip_increment          # if we set the flag we don't increment anymore
+        move    $t0, $a0
+        move    $t1, $a1
+        li      $t2, 0                          # width
+        li      $t3, 0                          # height
+        li      $t5, 0                          # has found width
+
+calculate_dimensions:
+        lb      $t4, ($t0)
+        beq     $t4, '\0', setup_main_loop 
+        beq     $t4, '\n', set_has_found_width
+        addi    $t3, $t3, 1                     # increment characters count
+        beq     $t5, 1, skip_increment
         addi    $t2, $t2, 1
         j       skip_increment
-set_flag:
+set_has_found_width:
         li      $t5, 1
 skip_increment:
         addi    $t0, $t0, 1
-        j       calc_width_height_loop
-write_loop_setup:
-        div     $t3, $t2                        # divide all cells count by first row count
+        j       calculate_dimensions
+
+setup_main_loop:
+        li      $t4, 0                          # flatten character index
+        div     $t3, $t2                        # divide cumulated characters by width
         mflo    $t3                             # quotient is the height
-        li      $t4, 0                          # flatten cell index
         move    $t0, $a0
         move    $t1, $a1
-write_loop:                                     # each iteration handle single cell
-        li      $t5, 0                          # mine count for the cell
-        lb      $t6, ($t0)                      # cell character
-        beq     $t6, '\0', annotate_end
-        beq     $t6, '\n', write_new_line
-        beq     $t6, '*', write_mine            # after this line we start to process the cell
-        # for each cell we do this loop
-        la      $v0, offsets                    # tmp hacky, i should be able to free 1 reg after clean up
-        li      $v1, 0 # 0 out of 8 checked
-inner_offset_loop:
-        push
-        lb      $a2, ($v0)
-        addi    $v0, $v0, 1
-        lb      $a3, ($v0)
-        addi    $v0, $v0, 1
-        jal     offset
-        pop
-        addi    $v1, $v1, 1
-        beq     $v1, 8, no_mines
-        j       inner_offset_loop
 
-# really bad name i picked here
-no_mines:                                       # write character
+main_loop:
+        li      $t5, 0                          # adjacent mine count
+        lb      $t6, ($t0)
+        beq     $t6, '\0', annotate_end
+        beq     $t6, '\n', store_new_line
+        beq     $t6, '*', store_mine
+        la      $v0, offsets
+        li      $v1, 0                          # verified adjacent cells count
+
+verify_adjacent_cells:
+        addi    $sp, $sp, -4
+        sw      $ra, ($sp)
+        lb      $a2, ($v0)                      # y offset to verify
+        addi    $v0, $v0, 1
+        lb      $a3, ($v0)                      # x offset to verify
+        addi    $v0, $v0, 1
+        jal     verify
+        lw      $ra, ($sp)
+        addi    $sp, $sp, 4
+        addi    $v1, $v1, 1
+        beq     $v1, 8, store_setup
+        j       verify_adjacent_cells
+
+store_setup:
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
-        bne     $t7, '0', non_zero_mine_count
-        li      $t7, ' '                        # we render ' ' instead of '0'
-non_zero_mine_count:
+        bne     $t7, '0', store_result
+        li      $t7, ' '                        # render ' ' instead of '0'
+store_result:
         sb      $t7, ($t1)
-        addi    $t0, $t0, 1                     # todo: i prefer to increment everything at the end (it's easier to do arithmetics) but i have to repeat those 3 lines
-        addi    $t1, $t1, 1
-        addi    $t4, $t4, 1
-        j       write_loop
-write_new_line:
-        sb      $t6, ($t1)
-        addi    $t0, $t0, 1
-        addi    $t1, $t1, 1
-        # here we don't increment cell count
-        j       write_loop
-write_mine: # we need a diff actually between \n and * which we write here
-        sb      $t6, ($t1)
         addi    $t0, $t0, 1
         addi    $t1, $t1, 1
         addi    $t4, $t4, 1
-        j       write_loop
+        j       main_loop
+
+store_new_line:
+        sb      $t6, ($t1)
+        addi    $t0, $t0, 1
+        addi    $t1, $t1, 1
+        j       main_loop
+
+store_mine:
+        sb      $t6, ($t1)
+        addi    $t0, $t0, 1
+        addi    $t1, $t1, 1
+        addi    $t4, $t4, 1
+        j       main_loop
+
 annotate_end:
         jr      $ra
 
-offset:
-        div     $t4, $t2 # all chars count / width
-        mflo    $t8 # height, y
-        mfhi    $t9 # x offset
-        add     $t8, $t8, $a2 # get the offsets of the mine from the current cell
+verify:                                         # verifies if character at offset is a mine
+        div     $t4, $t2                        # divid flatten character index by width
+        mflo    $t8                             # y
+        mfhi    $t9                             # x
+        add     $t8, $t8, $a2
         add     $t9, $t9, $a3
-        blt     $t9, $zero, offset_return
-        blt     $t8, $zero, offset_return
-        bge     $t9, $t2, offset_return
-        bge     $t8, $t3, offset_return
-        mul     $t7, $t8, $t2 # mul row by width
-        add     $t7, $t7, $t8 # but we need to add also \n chars for each line so we can just add it
-        add     $t7, $t7, $t9 # add back x offset to get total offset from ptr
-        add     $t7, $t7, $a0 # get ptr at other cell we check to see if it's a mine
+        blt     $t9, $zero, verify_end
+        blt     $t8, $zero, verify_end
+        bge     $t9, $t2, verify_end
+        bge     $t8, $t3, verify_end
+        mul     $t7, $t8, $t2                   # translate y into offset from base pointer
+        add     $t7, $t7, $t8                   # add one per new line character
+        add     $t7, $t7, $t9                   # add x
+        add     $t7, $t7, $a0                   # character at offset
         lb      $t6, ($t7)
-        bne     $t6, '*', offset_return
-        addi    $t5, $t5, 1
-offset_return:
+        bne     $t6, '*', verify_end
+        addi    $t5, $t5, 1                     # mine found
+
+verify_end:
         jr $ra
