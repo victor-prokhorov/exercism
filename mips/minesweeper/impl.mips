@@ -21,9 +21,17 @@
 # left => index-1 => |0,2| does not include hi=0
 # top => index-1-2 => |0,2| does include lo=1
 
-# todo: try macro to save on repetitive code further
-
 .globl annotate
+
+.macro push
+        addi $sp, $sp, -4
+        sw $ra, ($sp)
+.end_macro
+
+.macro pop
+        lw $ra, ($sp)
+        addi $sp, $sp, 4
+.end_macro
 
 annotate:
         move    $t0, $a0                        # `$a0`
@@ -57,13 +65,11 @@ write_loop:                                     # each iteration handle single c
         beq     $t6, '\n', write_new_line
         beq     $t6, '*', write_mine            # after this line we start to process the cell
 left_top: # (-1,-1) -> (1,1) 
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, 1
         li      $a3, 1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
         # div     $t4, $t2 # all chars count / width
         # mflo    $t8 # height, y
         # mfhi    $t9 # x offset
@@ -81,64 +87,50 @@ left_top: # (-1,-1) -> (1,1)
         # bne     $t6, '*', right_bot
         # addi    $t5, $t5, 1
 right_bot: # (1,1) -> (-1,-1) 
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, -1
         li      $a3, -1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 
 right_top:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, -1
         li      $a3, 1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 left_bot:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, 1
         li      $a3, -1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 
 top:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, -1
         li      $a3, 0
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 bot:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, 1
         li      $a3, 0
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 
 left:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, 0
         li      $a3, 1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 right:
-        addi $sp, $sp, -4
-        sw $ra, 0($sp)
+        push
         li      $a2, 0
         li      $a3, -1
         jal offset
-        lw $ra, 0($sp)
-        addi $sp, $sp, 4
+        pop
 
 
 no_mines:                                       # write character
