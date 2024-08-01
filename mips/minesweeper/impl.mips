@@ -21,6 +21,14 @@
 # left => index-1 => |0,2| does not include hi=0
 # top => index-1-2 => |0,2| does include lo=1
 
+
+.data
+
+offsets:
+.byte -1, -1,  0, -1,  1, -1
+      -1,  0,          1,  0
+      -1,  1,  0,  1,  1,  1
+
 .globl annotate
 
 .macro push
@@ -33,6 +41,7 @@
         addi $sp, $sp, 4
 .end_macro
 
+.text
 annotate:
         move    $t0, $a0                        # `$a0`
         move    $t1, $a1                        # `$a1`
@@ -64,75 +73,22 @@ write_loop:                                     # each iteration handle single c
         beq     $t6, '\0', annotate_end
         beq     $t6, '\n', write_new_line
         beq     $t6, '*', write_mine            # after this line we start to process the cell
-left_top: # (-1,-1) -> (1,1) 
+        # for each cell we do this loop
+        la      $v0, offsets                    # tmp hacky, i should be able to free 1 reg after clean up
+        li      $v1, 0 # 0 out of 8 checked
+inner_offset_loop:
         push
-        li      $a2, 1
-        li      $a3, 1
-        jal offset
+        lb      $a2, ($v0)
+        addi    $v0, $v0, 1
+        lb      $a3, ($v0)
+        addi    $v0, $v0, 1
+        jal     offset
         pop
-        # div     $t4, $t2 # all chars count / width
-        # mflo    $t8 # height, y
-        # mfhi    $t9 # x offset
-        # add     $t8, $t8, $a2 # get the offsets of the mine from the current cell
-        # add     $t9, $t9, $a3
-        # blt     $t9, $zero, right_bot
-        # blt     $t8, $zero, right_bot
-        # bge     $t9, $t2, right_bot
-        # bge     $t8, $t3, right_bot
-        # mul     $t7, $t8, $t2 # mul row by width
-        # add     $t7, $t7, $t8 # but we need to add also \n chars for each line so we can just add it
-        # add     $t7, $t7, $t9 # add back x offset to get total offset from ptr
-        # add     $t7, $t7, $a0 # get ptr at other cell we check to see if it's a mine
-        # lb      $t6, ($t7)
-        # bne     $t6, '*', right_bot
-        # addi    $t5, $t5, 1
-right_bot: # (1,1) -> (-1,-1) 
-        push
-        li      $a2, -1
-        li      $a3, -1
-        jal offset
-        pop
+        addi    $v1, $v1, 1
+        beq     $v1, 8, no_mines
+        j       inner_offset_loop
 
-right_top:
-        push
-        li      $a2, -1
-        li      $a3, 1
-        jal offset
-        pop
-left_bot:
-        push
-        li      $a2, 1
-        li      $a3, -1
-        jal offset
-        pop
-
-top:
-        push
-        li      $a2, -1
-        li      $a3, 0
-        jal offset
-        pop
-bot:
-        push
-        li      $a2, 1
-        li      $a3, 0
-        jal offset
-        pop
-
-left:
-        push
-        li      $a2, 0
-        li      $a3, 1
-        jal offset
-        pop
-right:
-        push
-        li      $a2, 0
-        li      $a3, -1
-        jal offset
-        pop
-
-
+# really bad name i picked here
 no_mines:                                       # write character
         li      $t7, '0'                        # mine count as character
         add     $t7, $t7, $t5                   # add mine count
