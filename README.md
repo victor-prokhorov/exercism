@@ -16,3 +16,7 @@ set - e
 do
   exercism download-- track = "$track"-- exercise = "$slug"-- force done
 ```
+
+https://exercism.org/docs/tracks/sqlite/tests
+
+watcher hello-world.sql 'sqlite3 -bail < hello-world_test.sql'
