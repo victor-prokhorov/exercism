@@ -20,3 +20,4 @@ do
 https://exercism.org/docs/tracks/sqlite/tests
 
 watcher hello-world.sql 'sqlite3 -bail < hello-world_test.sql'
+.mode column
