@@ -3,28 +3,24 @@ section .text
 global square_of_sum
 square_of_sum:
     xor rax, rax
+    mov rcx, rdi
 sum:
-    cmp rdi, 0
-    je square
     add rax, rdi
     dec rdi
-    jmp sum
-square:
+    loop sum
     imul rax, rax
     ret
 
 global sum_of_squares
 sum_of_squares:
     xor rax, rax
-    xor rsi, rsi
+    mov rcx, rdi
 squares:
-    cmp rdi, 0
-    je exit
-    mov rsi, rdi
-    dec rdi
-    imul rsi, rsi
-    add rax, rsi
-    jmp squares
+    mov rdi, rcx
+    imul rdi, rdi
+    add rax, rdi
+    loop squares
+    ret
 
 global difference_of_squares
 difference_of_squares:
