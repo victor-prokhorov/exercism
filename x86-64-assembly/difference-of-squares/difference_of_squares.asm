@@ -5,8 +5,7 @@ square_of_sum:
     xor rax, rax
     mov rcx, rdi
 sum:
-    add rax, rdi
-    dec rdi
+    add rax, rcx
     loop sum
     imul rax, rax
     ret
@@ -25,19 +24,13 @@ squares:
 global difference_of_squares
 difference_of_squares:
     push rdi
-    call square_of_sum
-    pop rdi
-    push rax
     call sum_of_squares
     pop rdi
-    sub rax, rdi
-    ; https://stackoverflow.com/a/11927940
-    mov ebx, eax
-    neg eax
-    cmovl eax, ebx
-    ret
-
-exit:
+    mov rdx, rax
+    push rdi
+    call square_of_sum
+    pop rdi
+    sub rax, rdx
     ret
 
 %ifidn __OUTPUT_FORMAT__,elf64
