@@ -31,9 +31,10 @@ difference_of_squares:
     call sum_of_squares
     pop rdi
     sub rax, rdi
-    test rax, rax
-    jns exit
-    neg rax
+    ; https://stackoverflow.com/a/11927940
+    mov ebx, eax
+    neg eax
+    cmovl eax, ebx
     ret
 
 exit:
