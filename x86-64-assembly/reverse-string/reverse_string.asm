@@ -13,14 +13,14 @@ find_last_position:
         inc     rsi
         jmp     find_last_position
 swap:
-        dec     rsi
-        cmp     rdi, rsi
+        cmp     rdi, rsi - 1
         jge     exit
         mov     al, byte [rdi]
-        mov     dl, byte [rsi]
+        mov     dl, byte [rsi - 1]
         mov     byte [rdi], dl
-        mov     byte [rsi], al
+        mov     byte [rsi - 1], al
         inc     rdi
+        dec     rsi
         jmp     swap
 exit:
         ret
