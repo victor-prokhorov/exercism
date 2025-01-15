@@ -1,32 +1,32 @@
 section .text
 
+; https://exercism.org/tracks/x86-64-assembly/exercises/hamming/solutions/paiv
 global distance
 distance:
     xor rax, rax
+    xor rcx, rcx
+    xor rdx, rdx
 .loop:
-    mov r8b, byte [rdi]
-    mov r9b, byte [rsi]
-    inc rdi
-    inc rsi
-    cmp r8b, 0
-    sete r10b
-    cmp r9b, 0
-    sete r11b
-    ; cmp r10b, r11b - does not work for the cases where it's false false
-    add r10b, r11b
-    cmp r10b, 2
-    je .eq
-    cmp r10b, 1
-    je .neq
+    mov r8b, byte [rdi + rcx]
+    mov r9b, byte [rsi + rcx]
+    inc rcx
     cmp r8b, r9b
-    je .loop
-    ; mov rax, 666
-    inc rax
-    jmp .loop
-.neq:
+    setne dl
+    add rax, rdx
+    or r8b, r9b
+    ; 0, 0 -> 0 -> both have same lengths, clean exit
+    ; 1, 0 | 0, 1 | 1, 1 -> 1 -> at least one side is non null
+    je .exit
+    test r8b, r9b
+    ; at this point, we already know that it is not `null, null`
+    ; 0, 1 -> 0 -> if on one of the sides we have 0 we get 0
+    ; i.e. if we get `1` we should have `1` on both sides
+    ;
+    ; thus if we get `0` we have null termination on one side
+    ; while having a character on other side, exit with error code `-1`
+    jne .loop
     mov rax, -1
-    ret
-.eq:
+.exit:
     ret
 
 %ifidn __OUTPUT_FORMAT__,elf64
