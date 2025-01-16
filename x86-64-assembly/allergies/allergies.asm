@@ -34,27 +34,25 @@ allergic_to:
 global list
 list:
 	mov	rdx,rsi				; save item list pointer because we need 2nd argument to make a call
+	add	rdx,4				; offset to the array content itself
 	mov	rsi,rdi				; copy received score into passed score
 	xor	rax,rax
 	xor	rcx,rcx				; loop `check_score` candidate value
 	dec	rcx				; score can start at 0 so we set -1 before the loop
 	xor	r8,r8				; growing list size
-	mov	dword[rdx],0			; must init, seg fault otherwise
 .check_score:
 	inc	rcx
 	cmp	rcx,8
 	jge	.quit	
 	mov	rdi,rcx				; copy candidate value into item argument
 	call	allergic_to		
-	mov	r8d,dword[rdx]			; get size value
-	add	r8,rax				; add to size counter if appropriate, i.e. if allergic
-	cmp	r8d,dword[rdx]
-	jz	.check_score			; size did not changed, try next candidate
-; no way this is how we `push` things can't wait to see how things are properly done
-	mov	dword[rdx+4+4*(r8-1)],ecx	; rdx=size rdx+4=array then each int is double word
-	mov	dword[rdx],r8d
+	cmp	rax,1
+	jnz	.check_score
+	mov	dword[rdx+4*r8],ecx		; first write
+	inc	r8				; then increment the size
 	jmp	.check_score
 .quit:	
+	mov	dword[rdx-4],r8d		; finally write the size once from the register
 	ret
 
 %ifidn __OUTPUT_FORMAT__,elf64
