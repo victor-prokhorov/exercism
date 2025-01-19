@@ -1,6 +1,6 @@
 default rel
 section .bss
-buffer resb 128
+buffer resb 64
 section .text
 global reverse
 reverse:
@@ -18,14 +18,16 @@ reverse:
 	dec rsi
 	mov rax, rdi
 .copy_from_buffer:
+	mov dl, byte [rax]
+	cmp dl, 0
+	jz .exit
 	mov dl, byte [rsi]
 	mov byte [rax], dl
 	dec rsi
 	inc rax
-	mov dl, byte [rax]
-	cmp dl, 0
 	jnz .copy_from_buffer
 .exit:
+	mov byte [rax], 0
 	ret
 
 %ifidn __OUTPUT_FORMAT__,elf64
